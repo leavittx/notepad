@@ -1,8 +1,7 @@
 #define WINVER 0x0500
 #include <windows.h>
 #include <shlwapi.h>
-#include <winuser.h>
-#include <mbstring.h>
+//#include <winuser.h>
 
 #include "main.h"
 #include "dialog.h"
@@ -11,33 +10,6 @@
 NOTEPAD_GLOBALS Globals;
 static ATOM aFINDMSGSTRING;
 static RECT main_rect;
-
-static const WCHAR notepad_reg_key[] = {'S','o','f','t','w','a','r','e','\\',
-                                        'M','i','c','r','o','s','o','f','t','\\','N','o','t','e','p','a','d','\0'};
-static const WCHAR value_fWrap[]            = {'f','W','r','a','p','\0'};
-static const WCHAR value_iPointSize[]       = {'i','P','o','i','n','t','S','i','z','e','\0'};
-static const WCHAR value_iWindowPosDX[]     = {'i','W','i','n','d','o','w','P','o','s','D','X','\0'};
-static const WCHAR value_iWindowPosDY[]     = {'i','W','i','n','d','o','w','P','o','s','D','Y','\0'};
-static const WCHAR value_iWindowPosX[]      = {'i','W','i','n','d','o','w','P','o','s','X','\0'};
-static const WCHAR value_iWindowPosY[]      = {'i','W','i','n','d','o','w','P','o','s','Y','\0'};
-static const WCHAR value_lfCharSet[]        = {'l','f','C','h','a','r','S','e','t','\0'};
-static const WCHAR value_lfClipPrecision[]  = {'l','f','C','l','i','p','P','r','e','c','i','s','i','o','n','\0'};
-static const WCHAR value_lfEscapement[]     = {'l','f','E','s','c','a','p','e','m','e','n','t','\0'};
-static const WCHAR value_lfItalic[]         = {'l','f','I','t','a','l','i','c','\0'};
-static const WCHAR value_lfOrientation[]    = {'l','f','O','r','i','e','n','t','a','t','i','o','n','\0'};
-static const WCHAR value_lfOutPrecision[]   = {'l','f','O','u','t','P','r','e','c','i','s','i','o','n','\0'};
-static const WCHAR value_lfPitchAndFamily[] = {'l','f','P','i','t','c','h','A','n','d','F','a','m','i','l','y','\0'};
-static const WCHAR value_lfQuality[]        = {'l','f','Q','u','a','l','i','t','y','\0'};
-static const WCHAR value_lfStrikeOut[]      = {'l','f','S','t','r','i','k','e','O','u','t','\0'};
-static const WCHAR value_lfUnderline[]      = {'l','f','U','n','d','e','r','l','i','n','e','\0'};
-static const WCHAR value_lfWeight[]         = {'l','f','W','e','i','g','h','t','\0'};
-static const WCHAR value_lfFaceName[]       = {'l','f','F','a','c','e','N','a','m','e','\0'};
-static const WCHAR value_iMarginTop[]       = {'i','M','a','r','g','i','n','T','o','p','\0'};
-static const WCHAR value_iMarginBottom[]    = {'i','M','a','r','g','i','n','B','o','t','t','o','m','\0'};
-static const WCHAR value_iMarginLeft[]      = {'i','M','a','r','g','i','n','L','e','f','t','\0'};
-static const WCHAR value_iMarginRight[]     = {'i','M','a','r','g','i','n','R','i','g','h','t','\0'};
-static const WCHAR value_szHeader[]         = {'s','z','H','e','a','d','e','r','\0'};
-static const WCHAR value_szFooter[]         = {'s','z','T','r','a','i','l','e','r','\0'};
 
 /***********************************************************************
  *
@@ -84,67 +56,6 @@ DWORD get_dpi(void)
 
 /***********************************************************************
  *
- *           NOTEPAD_SaveSettingToRegistry
- *
- *  Save setting to registry HKCU\Software\Microsoft\Notepad.
- */
-static VOID NOTEPAD_SaveSettingToRegistry(void)
-{
-    HKEY hkey;
-    DWORD disp;
-
-    if(RegCreateKeyExW(HKEY_CURRENT_USER, notepad_reg_key, 0, NULL,
-                REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hkey, &disp) == ERROR_SUCCESS)
-    {
-        DWORD data;
-        WINDOWPLACEMENT wndpl;
-
-        wndpl.length = sizeof(WINDOWPLACEMENT);
-        GetWindowPlacement(Globals.hMainWnd, &wndpl);
-        main_rect = wndpl.rcNormalPosition;
-
-#define SET_NOTEPAD_REG(hkey, value_name, value_data) do { DWORD data = value_data; RegSetValueExW(hkey, value_name, 0, REG_DWORD, (LPBYTE)&data, sizeof(DWORD)); }while(0)
-        SET_NOTEPAD_REG(hkey, value_fWrap,            Globals.bWrapLongLines);
-        SET_NOTEPAD_REG(hkey, value_iWindowPosX,      main_rect.left);
-        SET_NOTEPAD_REG(hkey, value_iWindowPosY,      main_rect.top);
-        SET_NOTEPAD_REG(hkey, value_iWindowPosDX,     main_rect.right - main_rect.left);
-        SET_NOTEPAD_REG(hkey, value_iWindowPosDY,     main_rect.bottom - main_rect.top);
-        SET_NOTEPAD_REG(hkey, value_lfCharSet,        Globals.lfFont.lfCharSet);
-        SET_NOTEPAD_REG(hkey, value_lfClipPrecision,  Globals.lfFont.lfClipPrecision);
-        SET_NOTEPAD_REG(hkey, value_lfEscapement,     Globals.lfFont.lfEscapement);
-        SET_NOTEPAD_REG(hkey, value_lfItalic,         Globals.lfFont.lfItalic);
-        SET_NOTEPAD_REG(hkey, value_lfOrientation,    Globals.lfFont.lfOrientation);
-        SET_NOTEPAD_REG(hkey, value_lfOutPrecision,   Globals.lfFont.lfOutPrecision);
-        SET_NOTEPAD_REG(hkey, value_lfPitchAndFamily, Globals.lfFont.lfPitchAndFamily);
-        SET_NOTEPAD_REG(hkey, value_lfQuality,        Globals.lfFont.lfQuality);
-        SET_NOTEPAD_REG(hkey, value_lfStrikeOut,      Globals.lfFont.lfStrikeOut);
-        SET_NOTEPAD_REG(hkey, value_lfUnderline,      Globals.lfFont.lfUnderline);
-        SET_NOTEPAD_REG(hkey, value_lfWeight,         Globals.lfFont.lfWeight);
-        SET_NOTEPAD_REG(hkey, value_iMarginTop,       Globals.iMarginTop);
-        SET_NOTEPAD_REG(hkey, value_iMarginBottom,    Globals.iMarginBottom);
-        SET_NOTEPAD_REG(hkey, value_iMarginLeft,      Globals.iMarginLeft);
-        SET_NOTEPAD_REG(hkey, value_iMarginRight,     Globals.iMarginRight);
-#undef SET_NOTEPAD_REG
-
-        /* Store the current value as 10 * twips */
-        data = MulDiv(abs(Globals.lfFont.lfHeight), 720 , get_dpi());
-        RegSetValueExW(hkey, value_iPointSize, 0, REG_DWORD, (LPBYTE)&data, sizeof(DWORD));
-
-        RegSetValueExW(hkey, value_lfFaceName, 0, REG_SZ, (LPBYTE)&Globals.lfFont.lfFaceName,
-                      lstrlenW(Globals.lfFont.lfFaceName) * sizeof(Globals.lfFont.lfFaceName[0]));
-
-        RegSetValueExW(hkey, value_szHeader, 0, REG_SZ, (LPBYTE)&Globals.szHeader,
-                      lstrlenW(Globals.szHeader) * sizeof(Globals.szHeader[0]));
-
-        RegSetValueExW(hkey, value_szFooter, 0, REG_SZ, (LPBYTE)&Globals.szFooter,
-                      lstrlenW(Globals.szFooter) * sizeof(Globals.szFooter[0]));
-
-        RegCloseKey(hkey);
-    }
-}
-
-/***********************************************************************
- *
  *           NOTEPAD_LoadSettingFromRegistry
  *
  *  Load setting from registry HKCU\Software\Microsoft\Notepad.
@@ -187,60 +98,6 @@ static VOID NOTEPAD_LoadSettingFromRegistry(void)
                 Globals.szHeader, ARRAY_SIZE(Globals.szHeader));
     LoadStringW(Globals.hInstance, STRING_PAGESETUP_FOOTERVALUE,
                 Globals.szFooter, ARRAY_SIZE(Globals.szFooter));
-
-    if(RegOpenKeyW(HKEY_CURRENT_USER, notepad_reg_key, &hkey) == ERROR_SUCCESS)
-    {
-        WORD  data_helper[MAX_PATH];
-        DWORD type, data, size;
-
-#define QUERY_NOTEPAD_REG(hkey, value_name, ret) do { DWORD type, data; DWORD size = sizeof(DWORD); if(RegQueryValueExW(hkey, value_name, 0, &type, (LPBYTE)&data, &size) == ERROR_SUCCESS) if(type == REG_DWORD) ret = data; } while(0)
-        QUERY_NOTEPAD_REG(hkey, value_fWrap,            Globals.bWrapLongLines);
-        QUERY_NOTEPAD_REG(hkey, value_iWindowPosX,      main_rect.left);
-        QUERY_NOTEPAD_REG(hkey, value_iWindowPosY,      main_rect.top);
-        QUERY_NOTEPAD_REG(hkey, value_iWindowPosDX,     dx);
-        QUERY_NOTEPAD_REG(hkey, value_iWindowPosDY,     dy);
-        QUERY_NOTEPAD_REG(hkey, value_lfCharSet,        Globals.lfFont.lfCharSet);
-        QUERY_NOTEPAD_REG(hkey, value_lfClipPrecision,  Globals.lfFont.lfClipPrecision);
-        QUERY_NOTEPAD_REG(hkey, value_lfEscapement,     Globals.lfFont.lfEscapement);
-        QUERY_NOTEPAD_REG(hkey, value_lfItalic,         Globals.lfFont.lfItalic);
-        QUERY_NOTEPAD_REG(hkey, value_lfOrientation,    Globals.lfFont.lfOrientation);
-        QUERY_NOTEPAD_REG(hkey, value_lfOutPrecision,   Globals.lfFont.lfOutPrecision);
-        QUERY_NOTEPAD_REG(hkey, value_lfPitchAndFamily, Globals.lfFont.lfPitchAndFamily);
-        QUERY_NOTEPAD_REG(hkey, value_lfQuality,        Globals.lfFont.lfQuality);
-        QUERY_NOTEPAD_REG(hkey, value_lfStrikeOut,      Globals.lfFont.lfStrikeOut);
-        QUERY_NOTEPAD_REG(hkey, value_lfUnderline,      Globals.lfFont.lfUnderline);
-        QUERY_NOTEPAD_REG(hkey, value_lfWeight,         Globals.lfFont.lfWeight);
-        QUERY_NOTEPAD_REG(hkey, value_iMarginTop,       Globals.iMarginTop);
-        QUERY_NOTEPAD_REG(hkey, value_iMarginBottom,    Globals.iMarginBottom);
-        QUERY_NOTEPAD_REG(hkey, value_iMarginLeft,      Globals.iMarginLeft);
-        QUERY_NOTEPAD_REG(hkey, value_iMarginRight,     Globals.iMarginRight);
-#undef QUERY_NOTEPAD_REG
-
-        main_rect.right = main_rect.left + dx;
-        main_rect.bottom = main_rect.top + dy;
-
-        size = sizeof(DWORD);
-        if(RegQueryValueExW(hkey, value_iPointSize, 0, &type, (LPBYTE)&data, &size) == ERROR_SUCCESS)
-            if(type == REG_DWORD)
-                /* The value is stored as 10 * twips */
-                Globals.lfFont.lfHeight = -MulDiv(abs(data), get_dpi(), 720);
-
-        size = sizeof(Globals.lfFont.lfFaceName);
-        if(RegQueryValueExW(hkey, value_lfFaceName, 0, &type, (LPBYTE)&data_helper, &size) == ERROR_SUCCESS)
-            if(type == REG_SZ)
-                lstrcpyW(Globals.lfFont.lfFaceName, data_helper);
-
-        size = sizeof(Globals.szHeader);
-        if(RegQueryValueExW(hkey, value_szHeader, 0, &type, (LPBYTE)&data_helper, &size) == ERROR_SUCCESS)
-            if(type == REG_SZ)
-                lstrcpyW(Globals.szHeader, data_helper);
-
-        size = sizeof(Globals.szFooter);
-        if(RegQueryValueExW(hkey, value_szFooter, 0, &type, (LPBYTE)&data_helper, &size) == ERROR_SUCCESS)
-            if(type == REG_SZ)
-                lstrcpyW(Globals.szFooter, data_helper);
-        RegCloseKey(hkey);
-    }
 }
 
 /***********************************************************************
@@ -538,7 +395,7 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
         break;
 
     case WM_DESTROY:
-        NOTEPAD_SaveSettingToRegistry();
+        //NOTEPAD_SaveSettingToRegistry();
 
         PostQuitMessage(0);
         break;
@@ -654,7 +511,8 @@ static void HandleCommandLine(LPWSTR cmdline)
             static const WCHAR txtW[] = { '.','t','x','t',0 };
 
             /* try to find file with ".txt" extension */
-            if (_mbschr(PathFindFileNameW(cmdline), '.'))
+            // strchrW - no such func
+            if (wcschr(PathFindFileNameW(cmdline), '.'))
             {
                 file_exists = FALSE;
                 file_name = cmdline;
