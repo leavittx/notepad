@@ -1,0 +1,7 @@
+make.sh
+main.c
+dialog.c
+dialog.h
+main.h
+notepad_res.h
+notepad.rc
