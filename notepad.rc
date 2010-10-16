@@ -1,45 +1,43 @@
-#include "notepad_res.h"
+/* Lev Panov, 2057/2, October 2010 */
 
-LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+#include "notepad_res.h"
 
 MAIN_MENU MENU
 {
- POPUP "&File" {
-  MENUITEM "&New\tCtrl+N",      CMD_NEW
-  MENUITEM "&Open...\tCtrl+O",  CMD_OPEN
-  MENUITEM "&Save\tCtrl+S",     CMD_SAVE
-  MENUITEM "Save &as...",       CMD_SAVE_AS
-  MENUITEM SEPARATOR
-  MENUITEM "E&xit",             CMD_EXIT
- }
-POPUP "&Edit" {
-  MENUITEM "&Wrap long lines",  CMD_WRAP
-  MENUITEM "&Font...",          CMD_FONT
- }
-POPUP "&Help" {
-  MENUITEM "&About", CMD_HELP_ABOUT_NOTEPAD
- }
+    POPUP "&File"
+    {
+        MENUITEM "New",              CMD_NEW
+        MENUITEM "Open...",          CMD_OPEN
+        MENUITEM "Save",             CMD_SAVE
+        MENUITEM "Save as...",       CMD_SAVE_AS
+        MENUITEM SEPARATOR
+        MENUITEM "Exit",             CMD_EXIT
+    }
+    POPUP "&Edit"
+    {
+        MENUITEM "Wrap long lines",  CMD_WRAP
+        MENUITEM "Font...",          CMD_FONT
+    }
+    POPUP "Help"
+    {
+        MENUITEM "About",            CMD_HELP_ABOUT_NOTEPAD
+    }
 }
 
 STRINGTABLE
 {
-STRING_NOTEPAD,                                 "Notepad"
-STRING_ERROR,                                   "ERROR"
-STRING_WARNING,                                 "WARNING"
-STRING_INFO,                                    "Information"
+    STRING_NOTEPAD,                             "Notepad"
+    STRING_ERROR,                               "ERROR"
 
-STRING_UNTITLED,                                "Untitled"
+    STRING_UNTITLED,                            "Untitled"
 
-STRING_ALL_FILES,                               "All files (*.*)"
-STRING_TEXT_FILES_TXT,                  "Text files (*.txt)"
+    STRING_ALL_FILES,                           "All files (*.*)"
+    STRING_TEXT_FILES_TXT,                      "Text files (*.txt)"
 
-STRING_TOOLARGE,                                "File '%s' is too large for notepad.\n\
-Please use a different editor."
-STRING_NOTEXT,                                  "You didn't enter any text.\
-\nPlease type something and try again"
-STRING_DOESNOTEXIST,                            "File '%s' does not exist.\n\n\
-Do you want to create a new file?"
-STRING_NOTSAVED,                                "File '%s' has been modified.\n\n\
-Would you like to save the changes?"
-STRING_NOTFOUND,                                        "'%s' could not be found."
+    STRING_DOESNOTEXIST,                        "File '%s' does not exist.\n\n\
+    Do you want to create a new file?"
+    STRING_NOTSAVED,                            "File '%s' has been modified.\n\n\
+    Would you like to save the changes?"
+
+    STRING_NOTFOUND,                            "'%s' could not be found."
 }

@@ -1,7 +1,9 @@
+/* Lev Panov, 2057/2, October 2010 */
+
 #define WINVER 0x0500
+
 #include <windows.h>
 #include <shlwapi.h>
-//#include <winuser.h>
 
 #include "main.h"
 #include "dialog.h"
@@ -12,45 +14,15 @@ static RECT main_rect;
 
 /***********************************************************************
  *
- *           SetFileNameAndEncoding
+ *           SetFileName
  *
- *  Sets global file name and encoding (which is used to preselect original
- *  encoding in Save As dialog, and when saving without using the Save As
- *  dialog).
+ *  Sets global file name.
  */
-VOID SetFileNameAndEncoding(LPCWSTR szFileName, ENCODING enc)
+VOID SetFileName(LPCWSTR szFileName)
 {
     lstrcpyW(Globals.szFileName, szFileName);
     Globals.szFileTitle[0] = 0;
     GetFileTitleW(szFileName, Globals.szFileTitle, sizeof(Globals.szFileTitle));
-    Globals.encFile = enc;
-}
-
-/******************************************************************************
- *      get_dpi
- *
- * Get the dpi from registry HKCC\Software\Fonts\LogPixels.
- */
-DWORD get_dpi(void)
-{
-    static const WCHAR dpi_key_name[] = {'S','o','f','t','w','a','r','e','\\','F','o','n','t','s','\0'};
-    static const WCHAR dpi_value_name[] = {'L','o','g','P','i','x','e','l','s','\0'};
-    DWORD dpi = 96;
-    HKEY hkey;
-
-    if (RegOpenKeyW(HKEY_CURRENT_CONFIG, dpi_key_name, &hkey) == ERROR_SUCCESS)
-    {
-        DWORD type, size, new_dpi;
-
-        size = sizeof(new_dpi);
-        if(RegQueryValueExW(hkey, dpi_value_name, NULL, &type, (LPBYTE)&new_dpi, &size) == ERROR_SUCCESS)
-        {
-            if(type == REG_DWORD && new_dpi != 0)
-                dpi = new_dpi;
-        }
-        RegCloseKey(hkey);
-    }
-    return dpi;
 }
 
 /***********************************************************************
@@ -110,12 +82,6 @@ static int NOTEPAD_MenuCommand(WPARAM wParam)
     case CMD_SAVE_AS:           DIALOG_FileSaveAs(); break;
     case CMD_EXIT:              DIALOG_FileExit(); break;
 
-    case CMD_CUT:              DIALOG_EditCut(); break;
-    case CMD_COPY:             DIALOG_EditCopy(); break;
-    case CMD_PASTE:            DIALOG_EditPaste(); break;
-    case CMD_DELETE:           DIALOG_EditDelete(); break;
-    case CMD_SELECT_ALL:       DIALOG_EditSelectAll(); break;
-
     case CMD_WRAP:             DIALOG_EditWrap(); break;
     case CMD_FONT:             DIALOG_SelectFont(); break;
 
@@ -145,43 +111,9 @@ static VOID NOTEPAD_InitData(VOID)
     lstrcpyW(p, all_files);
     p += lstrlenW(p) + 1;
     *p = '\0';
-    Globals.hDevMode = NULL;
-    Globals.hDevNames = NULL;
 
     CheckMenuItem(GetMenu(Globals.hMainWnd), CMD_WRAP,
             MF_BYCOMMAND | (Globals.bWrapLongLines ? MF_CHECKED : MF_UNCHECKED));
-}
-
-/***********************************************************************
- * Enable/disable items on the menu based on control state
- */
-static VOID NOTEPAD_InitMenuPopup(HMENU menu, int index)
-{
-    int enable;
-
-    EnableMenuItem(menu, CMD_PASTE,
-        IsClipboardFormatAvailable(CF_TEXT) ? MF_ENABLED : MF_GRAYED);
-    enable = SendMessageW(Globals.hEdit, EM_GETSEL, 0, 0);
-    enable = (HIWORD(enable) == LOWORD(enable)) ? MF_GRAYED : MF_ENABLED;
-    EnableMenuItem(menu, CMD_CUT, enable);
-    EnableMenuItem(menu, CMD_COPY, enable);
-    EnableMenuItem(menu, CMD_DELETE, enable);
-
-    EnableMenuItem(menu, CMD_SELECT_ALL,
-        GetWindowTextLengthW(Globals.hEdit) ? MF_ENABLED : MF_GRAYED);
-}
-
-static LPWSTR NOTEPAD_StrRStr(LPWSTR pszSource, LPWSTR pszLast, LPWSTR pszSrch)
-{
-    int len = lstrlenW(pszSrch);
-    pszLast--;
-    while (pszLast >= pszSource)
-    {
-        if (StrCmpNW(pszLast, pszSrch, len) == 0)
-            return pszLast;
-        pszLast--;
-    }
-    return NULL;
 }
 
 /***********************************************************************
@@ -217,10 +149,6 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
         NOTEPAD_MenuCommand(LOWORD(wParam));
         break;
 
-    case WM_DESTROYCLIPBOARD:
-        /*MessageBoxW(Globals.hMainWnd, "Empty clipboard", "Debug", MB_ICONEXCLAMATION);*/
-        break;
-
     case WM_CLOSE:
         if (DoCloseFile()) {
             DestroyWindow(hWnd);
@@ -234,8 +162,6 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
         break;
 
     case WM_DESTROY:
-        //NOTEPAD_SaveSettingToRegistry();
-
         PostQuitMessage(0);
         break;
 
@@ -255,13 +181,9 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
 
         DragQueryFileW(hDrop, 0, szFileName, ARRAY_SIZE(szFileName));
         DragFinish(hDrop);
-        DoOpenFile(szFileName, ENCODING_AUTO);
+        DoOpenFile(szFileName);
         break;
     }
-
-    case WM_INITMENUPOPUP:
-        NOTEPAD_InitMenuPopup((HMENU)wParam, lParam);
-        break;
 
     default:
         return DefWindowProcW(hWnd, msg, wParam, lParam);
@@ -286,80 +208,22 @@ static int AlertFileDoesNotExist(LPCWSTR szFileName)
    return(nResult);
 }
 
-static void HandleCommandLine(LPWSTR cmdline)
+static void HandleCommandLine(LPSTR cmdline)
 {
-    WCHAR delimiter;
-
-    /* skip white space */
-    while (*cmdline == ' ') cmdline++;
-
-    /* skip executable name */
-    delimiter = (*cmdline == '"' ? '"' : ' ');
-
-    if (*cmdline == delimiter) cmdline++;
-
-    while (*cmdline && *cmdline != delimiter) cmdline++;
-
-    if (*cmdline == delimiter) cmdline++;
-
-    while (*cmdline == ' ' || *cmdline == '-' || *cmdline == '/')
-    {
-        cmdline++;
-    }
-
+#if 0
     if (*cmdline)
     {
         /* file name is passed in the command line */
-        LPCWSTR file_name;
-        BOOL file_exists;
-        WCHAR buf[MAX_PATH];
-
-        if (cmdline[0] == '"')
-        {
-            WCHAR* wc;
-            cmdline++;
-            wc=cmdline;
-            /* Note: Double-quotes are not allowed in Windows filenames */
-            while (*wc && *wc != '"') wc++;
-            /* On Windows notepad ignores further arguments too */
-            *wc = 0;
-        }
-
         if (FileExists(cmdline))
         {
-            file_exists = TRUE;
-            file_name = cmdline;
-        }
-        else
-        {
-            static const WCHAR txtW[] = { '.','t','x','t',0 };
-
-            /* try to find file with ".txt" extension */
-            // strchrW - no such func
-            if (wcschr(PathFindFileNameW(cmdline), '.'))
-            {
-                file_exists = FALSE;
-                file_name = cmdline;
-            }
-            else
-            {
-                lstrcpynW(buf, cmdline, MAX_PATH - lstrlenW(txtW) - 1);
-                lstrcatW(buf, txtW);
-                file_name = buf;
-                file_exists = FileExists(buf);
-            }
-        }
-
-        if (file_exists)
-        {
-            DoOpenFile(file_name, ENCODING_AUTO);
+            DoOpenFile(cmdline);
             InvalidateRect(Globals.hMainWnd, NULL, FALSE);
         }
         else
         {
-            switch (AlertFileDoesNotExist(file_name)) {
+            switch (AlertFileDoesNotExist(cmdline)) {
             case IDYES:
-                SetFileNameAndEncoding(file_name, ENCODING_ANSI);
+                SetFileName(cmdline);
                 UpdateWindowCaption();
                 break;
 
@@ -372,6 +236,7 @@ static void HandleCommandLine(LPWSTR cmdline)
             }
         }
      }
+#endif
 }
 
 /***********************************************************************
@@ -382,7 +247,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
 {
     MSG msg;
     HACCEL hAccel;
-    WNDCLASSEXW class;
+    WNDCLASSEXW wc;
     HMONITOR monitor;
     MONITORINFO info;
     INT x, y;
@@ -393,18 +258,18 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
     Globals.hInstance       = hInstance;
     NOTEPAD_LoadSettingFromRegistry();
 
-    ZeroMemory(&class, sizeof(class));
-    class.cbSize        = sizeof(class);
-    class.lpfnWndProc   = NOTEPAD_WndProc;
-    class.hInstance     = Globals.hInstance;
-    class.hIcon         = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
-    class.hIconSm       = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
-    class.hCursor       = LoadCursorW(0, (LPCWSTR)IDC_ARROW);
-    class.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    class.lpszMenuName  = MAKEINTRESOURCEW(MAIN_MENU);
-    class.lpszClassName = className;
+    ZeroMemory(&wc, sizeof(wc));
+    wc.cbSize        = sizeof(wc);
+    wc.lpfnWndProc   = NOTEPAD_WndProc;
+    wc.hInstance     = Globals.hInstance;
+    wc.hIcon         = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
+    wc.hIconSm       = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
+    wc.hCursor       = LoadCursorW(0, (LPCWSTR)IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszMenuName  = MAKEINTRESOURCEW(MAIN_MENU);
+    wc.lpszClassName = className;
 
-    if (!RegisterClassExW(&class)) return FALSE;
+    if (!RegisterClassExW(&wc)) return FALSE;
 
     /* Setup windows */
 
@@ -437,13 +302,12 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
     UpdateWindow(Globals.hMainWnd);
     DragAcceptFiles(Globals.hMainWnd, TRUE);
 
-    HandleCommandLine(GetCommandLineW());
+    HandleCommandLine(cmdline);
 
     while (GetMessageW(&msg, 0, 0, 0))
     {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-
     return msg.wParam;
 }

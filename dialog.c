@@ -1,50 +1,12 @@
-#define WINVER 0x0500
-#include <assert.h>
-#include <stdio.h>
+/* Lev Panov, 2057/2, October 2010 */
+
 #include <windows.h>
-#include <commdlg.h>
-#include <shlwapi.h>
-#include <winnls.h>
 
 #include "main.h"
 #include "dialog.h"
 
 #define SPACES_IN_TAB 8
 #define PRINT_LEN_MAX 500
-
-static const WCHAR helpfileW[] = { 'n','o','t','e','p','a','d','.','h','l','p',0 };
-
-static INT_PTR WINAPI DIALOG_PAGESETUP_DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-
-/* Swap bytes of WCHAR buffer (big-endian <-> little-endian). */
-static inline void byteswap_wide_string(LPWSTR str, UINT num)
-{
-    UINT i;
-    //fix this
-    //for (i = 0; i < num; i++) str[i] = RtlUshortByteSwap(str[i]);
-}
-
-static void load_encoding_name(ENCODING enc, WCHAR* buffer, int length)
-{
-    switch (enc)
-    {
-        /*case ENCODING_UTF16LE:
-            LoadStringW(Globals.hInstance, STRING_UNICODE_LE, buffer, length);
-            break;
-
-        case ENCODING_UTF16BE:
-            LoadStringW(Globals.hInstance, STRING_UNICODE_BE, buffer, length);
-            break;*/
-
-        default:
-        {
-            CPINFOEXW cpi;
-            GetCPInfoExW((enc==ENCODING_UTF8) ? CP_UTF8 : CP_ACP, 0, &cpi);
-            lstrcpynW(buffer, cpi.CodePageName, length);
-            break;
-        }
-    }
-}
 
 VOID ShowLastError(void)
 {
@@ -121,23 +83,6 @@ static int AlertFileNotSaved(LPCWSTR szFileName)
      MB_ICONQUESTION|MB_YESNOCANCEL);
 }
 
-static int AlertUnicodeCharactersLost(LPCWSTR szFileName)
-{
-    WCHAR szMsgFormat[MAX_STRING_LEN];
-    WCHAR szEnc[MAX_STRING_LEN];
-    WCHAR szMsg[ARRAY_SIZE(szMsgFormat) + MAX_PATH + ARRAY_SIZE(szEnc)];
-    WCHAR szCaption[MAX_STRING_LEN];
-
-    //LoadStringW(Globals.hInstance, STRING_LOSS_OF_UNICODE_CHARACTERS,
-    //            szMsgFormat, ARRAY_SIZE(szMsgFormat));
-    load_encoding_name(ENCODING_ANSI, szEnc, ARRAY_SIZE(szEnc));
-    wnsprintfW(szMsg, ARRAY_SIZE(szMsg), szMsgFormat, szFileName, szEnc);
-    LoadStringW(Globals.hInstance, STRING_NOTEPAD, szCaption,
-                ARRAY_SIZE(szCaption));
-    return MessageBoxW(Globals.hMainWnd, szMsg, szCaption,
-                       MB_OKCANCEL|MB_ICONEXCLAMATION);
-}
-
 /**
  * Returns:
  *   TRUE  - if file exists
@@ -154,14 +99,6 @@ BOOL FileExists(LPCWSTR szFilename)
    return (hFile != INVALID_HANDLE_VALUE);
 }
 
-static inline BOOL is_conversion_to_ansi_lossy(LPCWSTR textW, int lenW)
-{
-    BOOL ret = FALSE;
-    WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, textW, lenW, NULL, 0,
-                        NULL, &ret);
-    return ret;
-}
-
 typedef enum
 {
     SAVED_OK,
@@ -169,15 +106,12 @@ typedef enum
     SHOW_SAVEAS_DIALOG
 } SAVE_STATUS;
 
-/* szFileName is the filename to save under; enc is the encoding to use.
+/* szFileName is the filename to save under.
  *
  * If the function succeeds, it returns SAVED_OK.
  * If the function fails, it returns SAVE_FAILED.
- * If Unicode data could be lost due to conversion to a non-Unicode character
- * set, a warning is displayed. The user can continue (and the function carries
- * on), or cancel (and the function returns SHOW_SAVEAS_DIALOG).
  */
-static SAVE_STATUS DoSaveFile(LPCWSTR szFileName, ENCODING enc)
+static SAVE_STATUS DoSaveFile(LPCWSTR szFileName)
 {
     int lenW;
     WCHAR* textW;
@@ -197,50 +131,18 @@ static SAVE_STATUS DoSaveFile(LPCWSTR szFileName, ENCODING enc)
     textW[0] = (WCHAR) 0xfeff;
     lenW = GetWindowTextW(Globals.hEdit, textW+1, lenW) + 1;
 
-    switch (enc)
+    ////////////////////////////
+    size = WideCharToMultiByte(CP_ACP, 0, textW+1, lenW-1, NULL, 0, NULL, NULL);
+    pBytes = HeapAlloc(GetProcessHeap(), 0, size);
+    if (!pBytes)
     {
-    case ENCODING_UTF16BE:
-        byteswap_wide_string(textW, lenW);
-        /* fall through */
-
-    case ENCODING_UTF16LE:
-        size = lenW * sizeof(WCHAR);
-        pBytes = textW;
-        break;
-
-    case ENCODING_UTF8:
-        size = WideCharToMultiByte(CP_UTF8, 0, textW, lenW, NULL, 0, NULL, NULL);
-        pBytes = HeapAlloc(GetProcessHeap(), 0, size);
-        if (!pBytes)
-        {
-            ShowLastError();
-            HeapFree(GetProcessHeap(), 0, textW);
-            return SAVE_FAILED;
-        }
-        WideCharToMultiByte(CP_UTF8, 0, textW, lenW, pBytes, size, NULL, NULL);
+        ShowLastError();
         HeapFree(GetProcessHeap(), 0, textW);
-        break;
-
-    default:
-        if (is_conversion_to_ansi_lossy(textW+1, lenW-1)
-            && AlertUnicodeCharactersLost(szFileName) == IDCANCEL)
-        {
-            HeapFree(GetProcessHeap(), 0, textW);
-            return SHOW_SAVEAS_DIALOG;
-        }
-
-        size = WideCharToMultiByte(CP_ACP, 0, textW+1, lenW-1, NULL, 0, NULL, NULL);
-        pBytes = HeapAlloc(GetProcessHeap(), 0, size);
-        if (!pBytes)
-        {
-            ShowLastError();
-            HeapFree(GetProcessHeap(), 0, textW);
-            return SAVE_FAILED;
-        }
-        WideCharToMultiByte(CP_ACP, 0, textW+1, lenW-1, pBytes, size, NULL, NULL);
-        HeapFree(GetProcessHeap(), 0, textW);
-        break;
+        return SAVE_FAILED;
     }
+    WideCharToMultiByte(CP_ACP, 0, textW+1, lenW-1, pBytes, size, NULL, NULL);
+    HeapFree(GetProcessHeap(), 0, textW);
+    /////////////////////////////
 
     hFile = CreateFileW(szFileName, GENERIC_WRITE, FILE_SHARE_WRITE,
                        NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -292,35 +194,14 @@ BOOL DoCloseFile(void)
         } /* switch */
     } /* if */
 
-    SetFileNameAndEncoding(empty_strW, ENCODING_ANSI);
+    SetFileName(empty_strW);
 
     UpdateWindowCaption();
     return(TRUE);
 }
 
-static inline ENCODING detect_encoding_of_buffer(const void* buffer, int size)
+void DoOpenFile(LPCWSTR szFileName)
 {
-    static const char bom_utf8[] = { 0xef, 0xbb, 0xbf };
-    if (size >= sizeof(bom_utf8) && !memcmp(buffer, bom_utf8, sizeof(bom_utf8)))
-        return ENCODING_UTF8;
-    else
-    {
-        int flags = IS_TEXT_UNICODE_SIGNATURE |
-                    IS_TEXT_UNICODE_REVERSE_SIGNATURE |
-                    IS_TEXT_UNICODE_ODD_LENGTH;
-        IsTextUnicode(buffer, size, &flags);
-        if (flags & IS_TEXT_UNICODE_SIGNATURE)
-            return ENCODING_UTF16LE;
-        else if (flags & IS_TEXT_UNICODE_REVERSE_SIGNATURE)
-            return ENCODING_UTF16BE;
-        else
-            return ENCODING_ANSI;
-    }
-}
-
-void DoOpenFile(LPCWSTR szFileName, ENCODING enc)
-{
-    static const WCHAR dotlog[] = { '.','L','O','G',0 };
     HANDLE hFile;
     LPSTR pTemp;
     DWORD size;
@@ -328,7 +209,6 @@ void DoOpenFile(LPCWSTR szFileName, ENCODING enc)
     int lenW;
     WCHAR* textW;
     int i;
-    WCHAR log[5];
 
     /* Close any files and prompt to save changes */
     if (!DoCloseFile())
@@ -371,49 +251,18 @@ void DoOpenFile(LPCWSTR szFileName, ENCODING enc)
 
     size = dwNumRead;
 
-    if (enc == ENCODING_AUTO)
-        enc = detect_encoding_of_buffer(pTemp, size);
-    else if (size >= 2 && (enc==ENCODING_UTF16LE || enc==ENCODING_UTF16BE))
+    ////////////////////////////
+    lenW = MultiByteToWideChar(CP_ACP, 0, pTemp, size, NULL, 0);
+    textW = HeapAlloc(GetProcessHeap(), 0, (lenW+1) * sizeof(WCHAR));
+    if (!textW)
     {
-        /* If UTF-16 (BE or LE) is selected, and there is a UTF-16 BOM,
-         * override the selection (like native Notepad).
-         */
-        if ((BYTE)pTemp[0] == 0xff && (BYTE)pTemp[1] == 0xfe)
-            enc = ENCODING_UTF16LE;
-        else if ((BYTE)pTemp[0] == 0xfe && (BYTE)pTemp[1] == 0xff)
-            enc = ENCODING_UTF16BE;
+        ShowLastError();
+        HeapFree(GetProcessHeap(), 0, pTemp);
+        return;
     }
-
-    switch (enc)
-    {
-    case ENCODING_UTF16BE:
-        byteswap_wide_string((WCHAR*) pTemp, size/sizeof(WCHAR));
-        /* Forget whether the file is BE or LE, like native Notepad. */
-        enc = ENCODING_UTF16LE;
-
-        /* fall through */
-
-    case ENCODING_UTF16LE:
-        textW = (LPWSTR)pTemp;
-        lenW  = size/sizeof(WCHAR);
-        break;
-
-    default:
-        {
-            int cp = (enc==ENCODING_UTF8) ? CP_UTF8 : CP_ACP;
-            lenW = MultiByteToWideChar(cp, 0, pTemp, size, NULL, 0);
-            textW = HeapAlloc(GetProcessHeap(), 0, (lenW+1) * sizeof(WCHAR));
-            if (!textW)
-            {
-                ShowLastError();
-                HeapFree(GetProcessHeap(), 0, pTemp);
-                return;
-            }
-            MultiByteToWideChar(cp, 0, pTemp, size, textW, lenW);
-            HeapFree(GetProcessHeap(), 0, pTemp);
-            break;
-        }
-    }
+    MultiByteToWideChar(CP_ACP, 0, pTemp, size, textW, lenW);
+    HeapFree(GetProcessHeap(), 0, pTemp);
+    /////////////////////////////
 
     /* Replace '\0's with spaces. Other than creating a custom control that
      * can deal with '\0' characters, it's the best that can be done.
@@ -434,7 +283,7 @@ void DoOpenFile(LPCWSTR szFileName, ENCODING enc)
     SendMessageW(Globals.hEdit, EM_EMPTYUNDOBUFFER, 0, 0);
     SetFocus(Globals.hEdit);
 
-    SetFileNameAndEncoding(szFileName, enc);
+    SetFileName(szFileName);
     UpdateWindowCaption();
 }
 
@@ -448,117 +297,6 @@ VOID DIALOG_FileNew(VOID)
         SendMessageW(Globals.hEdit, EM_EMPTYUNDOBUFFER, 0, 0);
         SetFocus(Globals.hEdit);
     }
-}
-
-/* Used to detect encoding of files selected in Open dialog.
- * Returns ENCODING_AUTO if file can't be read, etc.
- */
-static ENCODING detect_encoding_of_file(LPCWSTR szFileName)
-{
-    DWORD size;
-    HANDLE hFile = CreateFileW(szFileName, GENERIC_READ, FILE_SHARE_READ, NULL,
-                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE)
-        return ENCODING_AUTO;
-    size = GetFileSize(hFile, NULL);
-    if (size == INVALID_FILE_SIZE)
-    {
-        CloseHandle(hFile);
-        return ENCODING_AUTO;
-    }
-    else
-    {
-        DWORD dwNumRead;
-        BYTE buffer[MAX_STRING_LEN];
-        if (!ReadFile(hFile, buffer, min(size, sizeof(buffer)), &dwNumRead, NULL))
-        {
-            CloseHandle(hFile);
-            return ENCODING_AUTO;
-        }
-        CloseHandle(hFile);
-        return detect_encoding_of_buffer(buffer, dwNumRead);
-    }
-}
-
-static LPWSTR dialog_print_to_file(HWND hMainWnd)
-{
-    OPENFILENAMEW ofn;
-    static WCHAR file[MAX_PATH] = {'o','u','t','p','u','t','.','p','r','n',0};
-    static const WCHAR defExt[] = {'p','r','n',0};
-
-    ZeroMemory(&ofn, sizeof(ofn));
-
-    ofn.lStructSize = sizeof(ofn);
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
-    ofn.hwndOwner = hMainWnd;
-    ofn.lpstrFile = file;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrDefExt = defExt;
-
-    if(GetSaveFileNameW(&ofn))
-        return file;
-    else
-        return FALSE;
-}
-static UINT_PTR CALLBACK OfnHookProc(HWND hdlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    static HWND hEncCombo;
-
-    switch (uMsg)
-    {
-    case WM_INITDIALOG:
-        {
-            ENCODING enc;
-            hEncCombo = GetDlgItem(hdlg, IDC_OFN_ENCCOMBO);
-            for (enc = MIN_ENCODING; enc <= MAX_ENCODING; enc++)
-            {
-                WCHAR szEnc[MAX_STRING_LEN];
-                load_encoding_name(enc, szEnc, ARRAY_SIZE(szEnc));
-                SendMessageW(hEncCombo, CB_ADDSTRING, 0, (LPARAM)szEnc);
-            }
-            SendMessageW(hEncCombo, CB_SETCURSEL, (WPARAM)Globals.encOfnCombo, 0);
-        }
-        break;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDC_OFN_ENCCOMBO &&
-            HIWORD(wParam) == CBN_SELCHANGE)
-        {
-            int index = SendMessageW(hEncCombo, CB_GETCURSEL, 0, 0);
-            Globals.encOfnCombo = index==CB_ERR ? ENCODING_ANSI : (ENCODING)index;
-        }
-
-        break;
-
-    case WM_NOTIFY:
-        switch (((OFNOTIFYW*)lParam)->hdr.code)
-        {
-            case CDN_SELCHANGE:
-                if (Globals.bOfnIsOpenDialog)
-                {
-                    /* Check the start of the selected file for a BOM. */
-                    ENCODING enc;
-                    WCHAR szFileName[MAX_PATH];
-                    SendMessageW(GetParent(hdlg), CDM_GETFILEPATH,
-                                 ARRAY_SIZE(szFileName), (LPARAM)szFileName);
-                    enc = detect_encoding_of_file(szFileName);
-                    if (enc != ENCODING_AUTO)
-                    {
-                        Globals.encOfnCombo = enc;
-                        SendMessageW(hEncCombo, CB_SETCURSEL, (WPARAM)enc, 0);
-                    }
-                }
-                break;
-
-            default:
-                break;
-        }
-        break;
-
-    default:
-        break;
-    }
-    return 0;
 }
 
 VOID DIALOG_FileOpen(VOID)
@@ -578,18 +316,15 @@ VOID DIALOG_FileOpen(VOID)
     openfilename.lpstrFilter       = Globals.szFilter;
     openfilename.lpstrFile         = szPath;
     openfilename.nMaxFile          = ARRAY_SIZE(szPath);
-    openfilename.Flags = OFN_ENABLETEMPLATE | OFN_ENABLEHOOK | OFN_EXPLORER |
+    openfilename.Flags = OFN_ENABLETEMPLATE | OFN_EXPLORER |
                          OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST |
                          OFN_HIDEREADONLY | OFN_ENABLESIZING;
-    openfilename.lpfnHook          = OfnHookProc;
-    openfilename.lpTemplateName    = MAKEINTRESOURCEW(IDD_OFN_TEMPLATE);
     openfilename.lpstrDefExt       = szDefaultExt;
 
-    Globals.encOfnCombo = ENCODING_ANSI;
     Globals.bOfnIsOpenDialog = TRUE;
 
     if (GetOpenFileNameW(&openfilename))
-        DoOpenFile(openfilename.lpstrFile, Globals.encOfnCombo);
+        DoOpenFile(openfilename.lpstrFile);
 }
 
 /* Return FALSE to cancel close */
@@ -599,7 +334,7 @@ BOOL DIALOG_FileSave(VOID)
         return DIALOG_FileSaveAs();
     else
     {
-        switch (DoSaveFile(Globals.szFileName, Globals.encFile))
+        switch (DoSaveFile(Globals.szFileName))
         {
             case SAVED_OK:           return TRUE;
             case SHOW_SAVEAS_DIALOG: return DIALOG_FileSaveAs();
@@ -628,22 +363,18 @@ BOOL DIALOG_FileSaveAs(VOID)
     saveas.Flags          = OFN_ENABLETEMPLATE | OFN_ENABLEHOOK | OFN_EXPLORER |
                             OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT |
                             OFN_HIDEREADONLY | OFN_ENABLESIZING;
-    saveas.lpfnHook          = OfnHookProc;
-    saveas.lpTemplateName    = MAKEINTRESOURCEW(IDD_OFN_TEMPLATE);
     saveas.lpstrDefExt       = szDefaultExt;
 
-    /* Preset encoding to what file was opened/saved last with. */
-    Globals.encOfnCombo = Globals.encFile;
     Globals.bOfnIsOpenDialog = FALSE;
 
 retry:
     if (!GetSaveFileNameW(&saveas))
         return FALSE;
 
-    switch (DoSaveFile(szPath, Globals.encOfnCombo))
+    switch (DoSaveFile(szPath))
     {
         case SAVED_OK:
-            SetFileNameAndEncoding(szPath, Globals.encOfnCombo);
+            SetFileName(szPath);
             UpdateWindowCaption();
             return TRUE;
 
@@ -835,36 +566,6 @@ static BOOL notepad_print_page(HDC hdc, RECT *rc, BOOL dopage, int page, LPTEXTI
 VOID DIALOG_FileExit(VOID)
 {
     PostMessageW(Globals.hMainWnd, WM_CLOSE, 0, 0l);
-}
-
-VOID DIALOG_EditUndo(VOID)
-{
-    SendMessageW(Globals.hEdit, EM_UNDO, 0, 0);
-}
-
-VOID DIALOG_EditCut(VOID)
-{
-    SendMessageW(Globals.hEdit, WM_CUT, 0, 0);
-}
-
-VOID DIALOG_EditCopy(VOID)
-{
-    SendMessageW(Globals.hEdit, WM_COPY, 0, 0);
-}
-
-VOID DIALOG_EditPaste(VOID)
-{
-    SendMessageW(Globals.hEdit, WM_PASTE, 0, 0);
-}
-
-VOID DIALOG_EditDelete(VOID)
-{
-    SendMessageW(Globals.hEdit, WM_CLEAR, 0, 0);
-}
-
-VOID DIALOG_EditSelectAll(VOID)
-{
-    SendMessageW(Globals.hEdit, EM_SETSEL, 0, -1);
 }
 
 VOID DIALOG_EditWrap(VOID)

@@ -1,3 +1,5 @@
+/* Lev Panov, 2057/2, October 2010 */
+
 #ifndef DIALOG_H
 #define DIALOG_H
 
@@ -7,14 +9,7 @@ BOOL DIALOG_FileSave(VOID);
 BOOL DIALOG_FileSaveAs(VOID);
 VOID DIALOG_FileExit(VOID);
 
-VOID DIALOG_EditUndo(VOID);
-VOID DIALOG_EditCut(VOID);
-VOID DIALOG_EditCopy(VOID);
-VOID DIALOG_EditPaste(VOID);
-VOID DIALOG_EditDelete(VOID);
-VOID DIALOG_EditSelectAll(VOID);
 VOID DIALOG_EditWrap(VOID);
-
 VOID DIALOG_SelectFont(VOID);
 
 VOID DIALOG_HelpAboutNotepad(VOID);
@@ -26,6 +21,6 @@ VOID ShowLastError(void);
 void UpdateWindowCaption(void);
 BOOL FileExists(LPCWSTR szFilename);
 BOOL DoCloseFile(void);
-void DoOpenFile(LPCWSTR szFileName, ENCODING enc);
+void DoOpenFile(LPCWSTR szFileName);
 
 #endif // DIALOG_H
