@@ -8,7 +8,6 @@
 #include "notepad_res.h"
 
 NOTEPAD_GLOBALS Globals;
-static ATOM aFINDMSGSTRING;
 static RECT main_rect;
 
 /***********************************************************************
@@ -93,11 +92,6 @@ static VOID NOTEPAD_LoadSettingFromRegistry(void)
     Globals.lfFont.lfQuality        = DEFAULT_QUALITY;
     Globals.lfFont.lfPitchAndFamily = FIXED_PITCH | FF_DONTCARE;
     lstrcpyW(Globals.lfFont.lfFaceName, systemW);
-
-    LoadStringW(Globals.hInstance, STRING_PAGESETUP_HEADERVALUE,
-                Globals.szHeader, ARRAY_SIZE(Globals.szHeader));
-    LoadStringW(Globals.hInstance, STRING_PAGESETUP_FOOTERVALUE,
-                Globals.szFooter, ARRAY_SIZE(Globals.szFooter));
 }
 
 /***********************************************************************
@@ -114,30 +108,18 @@ static int NOTEPAD_MenuCommand(WPARAM wParam)
     case CMD_OPEN:              DIALOG_FileOpen(); break;
     case CMD_SAVE:              DIALOG_FileSave(); break;
     case CMD_SAVE_AS:           DIALOG_FileSaveAs(); break;
-    case CMD_PRINT:             DIALOG_FilePrint(); break;
-    case CMD_PAGE_SETUP:        DIALOG_FilePageSetup(); break;
-    case CMD_PRINTER_SETUP:     DIALOG_FilePrinterSetup();break;
     case CMD_EXIT:              DIALOG_FileExit(); break;
 
-    case CMD_UNDO:             DIALOG_EditUndo(); break;
     case CMD_CUT:              DIALOG_EditCut(); break;
     case CMD_COPY:             DIALOG_EditCopy(); break;
     case CMD_PASTE:            DIALOG_EditPaste(); break;
     case CMD_DELETE:           DIALOG_EditDelete(); break;
     case CMD_SELECT_ALL:       DIALOG_EditSelectAll(); break;
-    case CMD_TIME_DATE:        DIALOG_EditTimeDate();break;
-
-    case CMD_SEARCH:           DIALOG_Search(); break;
-    case CMD_SEARCH_NEXT:      DIALOG_SearchNext(); break;
-    case CMD_REPLACE:          DIALOG_Replace(); break;
 
     case CMD_WRAP:             DIALOG_EditWrap(); break;
     case CMD_FONT:             DIALOG_SelectFont(); break;
 
-    case CMD_HELP_CONTENTS:    DIALOG_HelpContents(); break;
-    case CMD_HELP_SEARCH:      DIALOG_HelpSearch(); break;
-    case CMD_HELP_ON_HELP:     DIALOG_HelpHelp(); break;
-    case CMD_HELP_ABOUT_NOTEPAD: DIALOG_HelpAboutNotepad(); break;
+    case CMD_HELP_ABOUT_NOTEPAD: DIALOG_About(); break;
 
     default:
         break;
@@ -177,8 +159,6 @@ static VOID NOTEPAD_InitMenuPopup(HMENU menu, int index)
 {
     int enable;
 
-    EnableMenuItem(menu, CMD_UNDO,
-        SendMessageW(Globals.hEdit, EM_CANUNDO, 0, 0) ? MF_ENABLED : MF_GRAYED);
     EnableMenuItem(menu, CMD_PASTE,
         IsClipboardFormatAvailable(CF_TEXT) ? MF_ENABLED : MF_GRAYED);
     enable = SendMessageW(Globals.hEdit, EM_GETSEL, 0, 0);
@@ -205,153 +185,12 @@ static LPWSTR NOTEPAD_StrRStr(LPWSTR pszSource, LPWSTR pszLast, LPWSTR pszSrch)
 }
 
 /***********************************************************************
- * The user activated the Find dialog
- */
-void NOTEPAD_DoFind(FINDREPLACEW *fr)
-{
-    LPWSTR content;
-    LPWSTR found;
-    int len = lstrlenW(fr->lpstrFindWhat);
-    int fileLen;
-    DWORD pos;
-
-    fileLen = GetWindowTextLengthW(Globals.hEdit) + 1;
-    content = HeapAlloc(GetProcessHeap(), 0, fileLen * sizeof(WCHAR));
-    if (!content) return;
-    GetWindowTextW(Globals.hEdit, content, fileLen);
-
-    SendMessageW(Globals.hEdit, EM_GETSEL, 0, (LPARAM)&pos);
-    switch (fr->Flags & (FR_DOWN|FR_MATCHCASE))
-    {
-        case 0:
-            found = StrRStrIW(content, content+pos-len, fr->lpstrFindWhat);
-            break;
-        case FR_DOWN:
-            found = StrStrIW(content+pos, fr->lpstrFindWhat);
-            break;
-        case FR_MATCHCASE:
-            found = NOTEPAD_StrRStr(content, content+pos-len, fr->lpstrFindWhat);
-            break;
-        case FR_DOWN|FR_MATCHCASE:
-            found = StrStrW(content+pos, fr->lpstrFindWhat);
-            break;
-        default:    /* shouldn't happen */
-            return;
-    }
-    HeapFree(GetProcessHeap(), 0, content);
-
-    if (found == NULL)
-    {
-        DIALOG_StringMsgBox(Globals.hFindReplaceDlg, STRING_NOTFOUND, fr->lpstrFindWhat,
-            MB_ICONINFORMATION|MB_OK);
-        return;
-    }
-
-    SendMessageW(Globals.hEdit, EM_SETSEL, found - content, found - content + len);
-}
-
-static void NOTEPAD_DoReplace(FINDREPLACEW *fr)
-{
-    LPWSTR content;
-    int len = lstrlenW(fr->lpstrFindWhat);
-    int fileLen;
-    DWORD pos;
-    DWORD pos_start;
-
-    fileLen = GetWindowTextLengthW(Globals.hEdit) + 1;
-    content = HeapAlloc(GetProcessHeap(), 0, fileLen * sizeof(WCHAR));
-    if (!content) return;
-    GetWindowTextW(Globals.hEdit, content, fileLen);
-
-    SendMessageW(Globals.hEdit, EM_GETSEL, (WPARAM)&pos_start, (LPARAM)&pos);
-    switch (fr->Flags & (FR_DOWN|FR_MATCHCASE))
-    {
-        case FR_DOWN:
-            if ( pos-pos_start == len && StrCmpNIW(fr->lpstrFindWhat, content+pos_start, len) == 0)
-                SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)fr->lpstrReplaceWith);
-            break;
-        case FR_DOWN|FR_MATCHCASE:
-            if ( pos-pos_start == len && StrCmpNW(fr->lpstrFindWhat, content+pos_start, len) == 0)
-                SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)fr->lpstrReplaceWith);
-            break;
-        default:    /* shouldn't happen */
-            return;
-    }
-    HeapFree(GetProcessHeap(), 0, content);
-
-    NOTEPAD_DoFind(fr);
-}
-
-static void NOTEPAD_DoReplaceAll(FINDREPLACEW *fr)
-{
-    LPWSTR content;
-    LPWSTR found;
-    int len = lstrlenW(fr->lpstrFindWhat);
-    int fileLen;
-    DWORD pos;
-
-    SendMessageW(Globals.hEdit, EM_SETSEL, 0, 0);
-    while(TRUE){
-        fileLen = GetWindowTextLengthW(Globals.hEdit) + 1;
-        content = HeapAlloc(GetProcessHeap(), 0, fileLen * sizeof(WCHAR));
-        if (!content) return;
-        GetWindowTextW(Globals.hEdit, content, fileLen);
-
-        SendMessageW(Globals.hEdit, EM_GETSEL, 0, (LPARAM)&pos);
-        switch (fr->Flags & (FR_DOWN|FR_MATCHCASE))
-        {
-            case FR_DOWN:
-                found = StrStrIW(content+pos, fr->lpstrFindWhat);
-                break;
-            case FR_DOWN|FR_MATCHCASE:
-                found = StrStrW(content+pos, fr->lpstrFindWhat);
-                break;
-            default:    /* shouldn't happen */
-                return;
-        }
-        HeapFree(GetProcessHeap(), 0, content);
-
-        if(found == NULL)
-        {
-            SendMessageW(Globals.hEdit, EM_SETSEL, 0, 0);
-            return;
-        }
-        SendMessageW(Globals.hEdit, EM_SETSEL, found - content, found - content + len);
-        SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)fr->lpstrReplaceWith);
-    }
-}
-
-/***********************************************************************
  *
  *           NOTEPAD_WndProc
  */
 static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
                                LPARAM lParam)
 {
-    if (msg == aFINDMSGSTRING)      /* not a constant so can't be used in switch */
-    {
-        FINDREPLACEW *fr = (FINDREPLACEW *)lParam;
-
-        if (fr->Flags & FR_DIALOGTERM)
-            Globals.hFindReplaceDlg = NULL;
-        if (fr->Flags & FR_FINDNEXT)
-        {
-            Globals.lastFind = *fr;
-            NOTEPAD_DoFind(fr);
-        }
-        if (fr->Flags & FR_REPLACE)
-        {
-            Globals.lastFind = *fr;
-            NOTEPAD_DoReplace(fr);
-        }
-        if (fr->Flags & FR_REPLACEALL)
-        {
-            Globals.lastFind = *fr;
-            NOTEPAD_DoReplaceAll(fr);
-        }
-        return 0;
-    }
-
     switch (msg) {
 
     case WM_CREATE:
@@ -450,7 +289,6 @@ static int AlertFileDoesNotExist(LPCWSTR szFileName)
 static void HandleCommandLine(LPWSTR cmdline)
 {
     WCHAR delimiter;
-    int opt_print=0;
 
     /* skip white space */
     while (*cmdline == ' ') cmdline++;
@@ -466,21 +304,7 @@ static void HandleCommandLine(LPWSTR cmdline)
 
     while (*cmdline == ' ' || *cmdline == '-' || *cmdline == '/')
     {
-        WCHAR option;
-
-        if (*cmdline++ == ' ') continue;
-
-        option = *cmdline;
-        if (option) cmdline++;
-        while (*cmdline == ' ') cmdline++;
-
-        switch(option)
-        {
-            case 'p':
-            case 'P':
-                opt_print=1;
-                break;
-        }
+        cmdline++;
     }
 
     if (*cmdline)
@@ -530,8 +354,6 @@ static void HandleCommandLine(LPWSTR cmdline)
         {
             DoOpenFile(file_name, ENCODING_AUTO);
             InvalidateRect(Globals.hMainWnd, NULL, FALSE);
-            if (opt_print)
-                DIALOG_FilePrint();
         }
         else
         {
@@ -567,8 +389,6 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
     static const WCHAR className[] = {'N','o','t','e','p','a','d',0};
     static const WCHAR winName[]   = {'N','o','t','e','p','a','d',0};
 
-    aFINDMSGSTRING = RegisterWindowMessageW(FINDMSGSTRINGW);
-
     ZeroMemory(&Globals, sizeof(Globals));
     Globals.hInstance       = hInstance;
     NOTEPAD_LoadSettingFromRegistry();
@@ -577,10 +397,8 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
     class.cbSize        = sizeof(class);
     class.lpfnWndProc   = NOTEPAD_WndProc;
     class.hInstance     = Globals.hInstance;
-    class.hIcon         = LoadIconW(Globals.hInstance, MAKEINTRESOURCEW(IDI_NOTEPAD));
-    class.hIconSm       = LoadImageW(Globals.hInstance, MAKEINTRESOURCEW(IDI_NOTEPAD), IMAGE_ICON,
-                                     GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
-                                     LR_SHARED);
+    class.hIcon         = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
+    class.hIconSm       = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
     class.hCursor       = LoadCursorW(0, (LPCWSTR)IDC_ARROW);
     class.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     class.lpszMenuName  = MAKEINTRESOURCEW(MAIN_MENU);
@@ -621,15 +439,11 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
 
     HandleCommandLine(GetCommandLineW());
 
-    hAccel = LoadAcceleratorsW(hInstance, MAKEINTRESOURCEW(ID_ACCEL));
-
     while (GetMessageW(&msg, 0, 0, 0))
     {
-        if (!TranslateAcceleratorW(Globals.hMainWnd, hAccel, &msg) && !IsDialogMessageW(Globals.hFindReplaceDlg, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-        }
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
     }
+
     return msg.wParam;
 }

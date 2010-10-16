@@ -28,13 +28,13 @@ static void load_encoding_name(ENCODING enc, WCHAR* buffer, int length)
 {
     switch (enc)
     {
-        case ENCODING_UTF16LE:
+        /*case ENCODING_UTF16LE:
             LoadStringW(Globals.hInstance, STRING_UNICODE_LE, buffer, length);
             break;
 
         case ENCODING_UTF16BE:
             LoadStringW(Globals.hInstance, STRING_UNICODE_BE, buffer, length);
-            break;
+            break;*/
 
         default:
         {
@@ -128,8 +128,8 @@ static int AlertUnicodeCharactersLost(LPCWSTR szFileName)
     WCHAR szMsg[ARRAY_SIZE(szMsgFormat) + MAX_PATH + ARRAY_SIZE(szEnc)];
     WCHAR szCaption[MAX_STRING_LEN];
 
-    LoadStringW(Globals.hInstance, STRING_LOSS_OF_UNICODE_CHARACTERS,
-                szMsgFormat, ARRAY_SIZE(szMsgFormat));
+    //LoadStringW(Globals.hInstance, STRING_LOSS_OF_UNICODE_CHARACTERS,
+    //            szMsgFormat, ARRAY_SIZE(szMsgFormat));
     load_encoding_name(ENCODING_ANSI, szEnc, ARRAY_SIZE(szEnc));
     wnsprintfW(szMsg, ARRAY_SIZE(szMsg), szMsgFormat, szFileName, szEnc);
     LoadStringW(Globals.hInstance, STRING_NOTEPAD, szCaption,
@@ -433,16 +433,6 @@ void DoOpenFile(LPCWSTR szFileName, ENCODING enc)
     SendMessageW(Globals.hEdit, EM_SETMODIFY, FALSE, 0);
     SendMessageW(Globals.hEdit, EM_EMPTYUNDOBUFFER, 0, 0);
     SetFocus(Globals.hEdit);
-
-    /*  If the file starts with .LOG, add a time/date at the end and set cursor after */
-    if (GetWindowTextW(Globals.hEdit, log, ARRAY_SIZE(log)) && !lstrcmpW(log, dotlog))
-    {
-        static const WCHAR lfW[] = { '\r','\n',0 };
-        SendMessageW(Globals.hEdit, EM_SETSEL, GetWindowTextLengthW(Globals.hEdit), -1);
-        SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)lfW);
-        DIALOG_EditTimeDate();
-        SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)lfW);
-    }
 
     SetFileNameAndEncoding(szFileName, enc);
     UpdateWindowCaption();
@@ -842,148 +832,6 @@ static BOOL notepad_print_page(HDC hdc, RECT *rc, BOOL dopage, int page, LPTEXTI
     return TRUE;
 }
 
-VOID DIALOG_FilePrint(VOID)
-{
-    DOCINFOW di;
-    PRINTDLGW printer;
-    int page, dopage, copy;
-    LOGFONTW lfFont;
-    HFONT hTextFont, old_font = 0;
-    DWORD size;
-    BOOL ret = FALSE;
-    RECT rc;
-    LPWSTR pTemp;
-    TEXTINFO tInfo;
-    WCHAR cTemp[PRINT_LEN_MAX];
-
-    /* Get Current Settings */
-    ZeroMemory(&printer, sizeof(printer));
-    printer.lStructSize           = sizeof(printer);
-    printer.hwndOwner             = Globals.hMainWnd;
-    printer.hDevMode              = Globals.hDevMode;
-    printer.hDevNames             = Globals.hDevNames;
-    printer.hInstance             = Globals.hInstance;
-
-    /* Set some default flags */
-    printer.Flags                 = PD_RETURNDC | PD_NOSELECTION;
-    printer.nFromPage             = 0;
-    printer.nMinPage              = 1;
-    /* we really need to calculate number of pages to set nMaxPage and nToPage */
-    printer.nToPage               = 0;
-    printer.nMaxPage              = -1;
-    /* Let commdlg manage copy settings */
-    printer.nCopies               = (WORD)PD_USEDEVMODECOPIES;
-
-    if (!PrintDlgW(&printer)) return;
-
-    Globals.hDevMode = printer.hDevMode;
-    Globals.hDevNames = printer.hDevNames;
-
-    SetMapMode(printer.hDC, MM_TEXT);
-
-    /* initialize DOCINFO */
-    di.cbSize = sizeof(DOCINFOW);
-    di.lpszDocName = Globals.szFileTitle;
-    di.lpszOutput = NULL;
-    di.lpszDatatype = NULL;
-    di.fwType = 0;
-
-    if(printer.Flags & PD_PRINTTOFILE)
-    {
-        di.lpszOutput = dialog_print_to_file(printer.hwndOwner);
-        if(!di.lpszOutput)
-            return;
-    }
-
-    /* Get the file text */
-    size = GetWindowTextLengthW(Globals.hEdit) + 1;
-    pTemp = HeapAlloc(GetProcessHeap(), 0, size * sizeof(WCHAR));
-    if (!pTemp)
-    {
-       DeleteDC(printer.hDC);
-       ShowLastError();
-       return;
-    }
-    size = GetWindowTextW(Globals.hEdit, pTemp, size);
-
-    if (StartDocW(printer.hDC, &di) > 0)
-    {
-        /* Get the page margins in pixels. */
-        rc.top =    MulDiv(Globals.iMarginTop, GetDeviceCaps(printer.hDC, LOGPIXELSY), 2540) -
-                    GetDeviceCaps(printer.hDC, PHYSICALOFFSETY);
-        rc.bottom = GetDeviceCaps(printer.hDC, PHYSICALHEIGHT) -
-                    MulDiv(Globals.iMarginBottom, GetDeviceCaps(printer.hDC, LOGPIXELSY), 2540);
-        rc.left =   MulDiv(Globals.iMarginLeft, GetDeviceCaps(printer.hDC, LOGPIXELSX), 2540) -
-                    GetDeviceCaps(printer.hDC, PHYSICALOFFSETX);
-        rc.right =  GetDeviceCaps(printer.hDC, PHYSICALWIDTH) -
-                    MulDiv(Globals.iMarginRight, GetDeviceCaps(printer.hDC, LOGPIXELSX), 2540);
-
-        /* Create a font for the printer resolution */
-        lfFont = Globals.lfFont;
-        lfFont.lfHeight = MulDiv(lfFont.lfHeight, GetDeviceCaps(printer.hDC, LOGPIXELSY), get_dpi());
-        /* Make the font a bit lighter */
-        lfFont.lfWeight -= 100;
-        hTextFont = CreateFontIndirectW(&lfFont);
-        old_font = SelectObject(printer.hDC, hTextFont);
-
-        for (copy = 1; copy <= printer.nCopies; copy++)
-        {
-            page = 1;
-
-            tInfo.mptr = pTemp;
-            tInfo.mend = pTemp + size;
-            tInfo.lptr = cTemp;
-            tInfo.len = 0;
-
-            do {
-                if (printer.Flags & PD_PAGENUMS)
-                {
-                    /* a specific range of pages is selected, so
-                     * skip pages that are not to be printed
-                     */
-                    if (page > printer.nToPage)
-                        break;
-                    else if (page >= printer.nFromPage)
-                        dopage = 1;
-                    else
-                        dopage = 0;
-                }
-                else
-                    dopage = 1;
-
-                ret = notepad_print_page(printer.hDC, &rc, dopage, page, &tInfo);
-                page++;
-            } while (ret && tInfo.mptr < tInfo.mend);
-
-            if (!ret) break;
-        }
-        EndDoc(printer.hDC);
-        SelectObject(printer.hDC, old_font);
-        DeleteObject(hTextFont);
-    }
-    DeleteDC(printer.hDC);
-    HeapFree(GetProcessHeap(), 0, pTemp);
-}
-
-VOID DIALOG_FilePrinterSetup(VOID)
-{
-    PRINTDLGW printer;
-
-    ZeroMemory(&printer, sizeof(printer));
-    printer.lStructSize         = sizeof(printer);
-    printer.hwndOwner           = Globals.hMainWnd;
-    printer.hDevMode            = Globals.hDevMode;
-    printer.hDevNames           = Globals.hDevNames;
-    printer.hInstance           = Globals.hInstance;
-    printer.Flags               = PD_PRINTSETUP;
-    printer.nCopies             = 1;
-
-    PrintDlgW(&printer);
-
-    Globals.hDevMode = printer.hDevMode;
-    Globals.hDevNames = printer.hDevNames;
-}
-
 VOID DIALOG_FileExit(VOID)
 {
     PostMessageW(Globals.hMainWnd, WM_CLOSE, 0, 0l);
@@ -1017,23 +865,6 @@ VOID DIALOG_EditDelete(VOID)
 VOID DIALOG_EditSelectAll(VOID)
 {
     SendMessageW(Globals.hEdit, EM_SETSEL, 0, -1);
-}
-
-VOID DIALOG_EditTimeDate(VOID)
-{
-    SYSTEMTIME   st;
-    WCHAR        szDate[MAX_STRING_LEN];
-    static const WCHAR spaceW[] = { ' ',0 };
-
-    GetLocalTime(&st);
-
-    GetTimeFormatW(LOCALE_USER_DEFAULT, TIME_NOSECONDS, &st, NULL, szDate, MAX_STRING_LEN);
-    SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)szDate);
-
-    SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)spaceW);
-
-    GetDateFormatW(LOCALE_USER_DEFAULT, 0, &st, NULL, szDate, MAX_STRING_LEN);
-    SendMessageW(Globals.hEdit, EM_REPLACESEL, TRUE, (LPARAM)szDate);
 }
 
 VOID DIALOG_EditWrap(VOID)
@@ -1095,156 +926,11 @@ VOID DIALOG_SelectFont(VOID)
     }
 }
 
-VOID DIALOG_Search(VOID)
-{
-        /* Allow only one search/replace dialog to open */
-        if(Globals.hFindReplaceDlg != NULL)
-        {
-            SetActiveWindow(Globals.hFindReplaceDlg);
-            return;
-        }
-
-        ZeroMemory(&Globals.find, sizeof(Globals.find));
-        Globals.find.lStructSize      = sizeof(Globals.find);
-        Globals.find.hwndOwner        = Globals.hMainWnd;
-        Globals.find.hInstance        = Globals.hInstance;
-        Globals.find.lpstrFindWhat    = Globals.szFindText;
-        Globals.find.wFindWhatLen     = ARRAY_SIZE(Globals.szFindText);
-        Globals.find.Flags            = FR_DOWN|FR_HIDEWHOLEWORD;
-
-        /* We only need to create the modal FindReplace dialog which will */
-        /* notify us of incoming events using hMainWnd Window Messages    */
-
-        Globals.hFindReplaceDlg = FindTextW(&Globals.find);
-        assert(Globals.hFindReplaceDlg !=0);
-}
-
-VOID DIALOG_SearchNext(VOID)
-{
-    if (Globals.lastFind.lpstrFindWhat == NULL)
-        DIALOG_Search();
-    else                /* use the last find data */
-        NOTEPAD_DoFind(&Globals.lastFind);
-}
-
-VOID DIALOG_Replace(VOID)
-{
-        /* Allow only one search/replace dialog to open */
-        if(Globals.hFindReplaceDlg != NULL)
-        {
-            SetActiveWindow(Globals.hFindReplaceDlg);
-            return;
-        }
-
-        ZeroMemory(&Globals.find, sizeof(Globals.find));
-        Globals.find.lStructSize      = sizeof(Globals.find);
-        Globals.find.hwndOwner        = Globals.hMainWnd;
-        Globals.find.hInstance        = Globals.hInstance;
-        Globals.find.lpstrFindWhat    = Globals.szFindText;
-        Globals.find.wFindWhatLen     = ARRAY_SIZE(Globals.szFindText);
-        Globals.find.lpstrReplaceWith = Globals.szReplaceText;
-        Globals.find.wReplaceWithLen  = ARRAY_SIZE(Globals.szReplaceText);
-        Globals.find.Flags            = FR_DOWN|FR_HIDEWHOLEWORD;
-
-        /* We only need to create the modal FindReplace dialog which will */
-        /* notify us of incoming events using hMainWnd Window Messages    */
-
-        Globals.hFindReplaceDlg = ReplaceTextW(&Globals.find);
-        assert(Globals.hFindReplaceDlg !=0);
-}
-
-VOID DIALOG_HelpContents(VOID)
-{
-    WinHelpW(Globals.hMainWnd, helpfileW, HELP_INDEX, 0);
-}
-
-VOID DIALOG_HelpSearch(VOID)
-{
-        /* Search Help */
-}
-
-VOID DIALOG_HelpHelp(VOID)
-{
-    WinHelpW(Globals.hMainWnd, helpfileW, HELP_HELPONHELP, 0);
-}
-
-VOID DIALOG_HelpAboutNotepad(VOID)
+VOID DIALOG_About(VOID)
 {
     static const WCHAR notepadW[] = { 'W','i','n','e',' ','N','o','t','e','p','a','d',0 };
     WCHAR szNotepad[MAX_STRING_LEN];
-    HICON icon = LoadImageW(Globals.hInstance, MAKEINTRESOURCEW(IDI_NOTEPAD),
-                            IMAGE_ICON, 48, 48, LR_SHARED);
 
     LoadStringW(Globals.hInstance, STRING_NOTEPAD, szNotepad, ARRAY_SIZE(szNotepad));
-    ShellAboutW(Globals.hMainWnd, szNotepad, notepadW, icon);
-}
-
-
-/***********************************************************************
- *
- *           DIALOG_FilePageSetup
- */
-VOID DIALOG_FilePageSetup(void)
-{
-    DialogBoxW(Globals.hInstance, MAKEINTRESOURCEW(DIALOG_PAGESETUP),
-               Globals.hMainWnd, DIALOG_PAGESETUP_DlgProc);
-}
-
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *
- *           DIALOG_PAGESETUP_DlgProc
- */
-
-static INT_PTR WINAPI DIALOG_PAGESETUP_DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-
-   switch (msg)
-    {
-    case WM_COMMAND:
-      switch (wParam)
-        {
-        case IDOK:
-          /* save user input and close dialog */
-          GetDlgItemTextW(hDlg, IDC_PAGESETUP_HEADERVALUE, Globals.szHeader, ARRAY_SIZE(Globals.szHeader));
-          GetDlgItemTextW(hDlg, IDC_PAGESETUP_FOOTERVALUE, Globals.szFooter, ARRAY_SIZE(Globals.szFooter));
-
-          Globals.iMarginTop = GetDlgItemInt(hDlg, IDC_PAGESETUP_TOPVALUE, NULL, FALSE) * 100;
-          Globals.iMarginBottom = GetDlgItemInt(hDlg, IDC_PAGESETUP_BOTTOMVALUE, NULL, FALSE) * 100;
-          Globals.iMarginLeft = GetDlgItemInt(hDlg, IDC_PAGESETUP_LEFTVALUE, NULL, FALSE) * 100;
-          Globals.iMarginRight = GetDlgItemInt(hDlg, IDC_PAGESETUP_RIGHTVALUE, NULL, FALSE) * 100;
-          EndDialog(hDlg, IDOK);
-          return TRUE;
-
-        case IDCANCEL:
-          /* discard user input and close dialog */
-          EndDialog(hDlg, IDCANCEL);
-          return TRUE;
-
-        case IDHELP:
-        {
-          /* FIXME: Bring this to work */
-          static const WCHAR sorryW[] = { 'S','o','r','r','y',',',' ','n','o',' ','h','e','l','p',' ','a','v','a','i','l','a','b','l','e',0 };
-          static const WCHAR helpW[] = { 'H','e','l','p',0 };
-          MessageBoxW(Globals.hMainWnd, sorryW, helpW, MB_ICONEXCLAMATION);
-          return TRUE;
-        }
-
-        default:
-            break;
-        }
-      break;
-
-    case WM_INITDIALOG:
-       /* fetch last user input prior to display dialog */
-       SetDlgItemTextW(hDlg, IDC_PAGESETUP_HEADERVALUE, Globals.szHeader);
-       SetDlgItemTextW(hDlg, IDC_PAGESETUP_FOOTERVALUE, Globals.szFooter);
-       SetDlgItemInt(hDlg, IDC_PAGESETUP_TOPVALUE, Globals.iMarginTop / 100, FALSE);
-       SetDlgItemInt(hDlg, IDC_PAGESETUP_BOTTOMVALUE, Globals.iMarginBottom / 100, FALSE);
-       SetDlgItemInt(hDlg, IDC_PAGESETUP_LEFTVALUE, Globals.iMarginLeft / 100, FALSE);
-       SetDlgItemInt(hDlg, IDC_PAGESETUP_RIGHTVALUE, Globals.iMarginRight / 100, FALSE);
-       break;
-    }
-
-  return FALSE;
+    ShellAboutW(Globals.hMainWnd, szNotepad, notepadW, NULL);
 }
