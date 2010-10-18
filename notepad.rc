@@ -4,7 +4,7 @@
 
 MAIN_MENU MENU
 {
-    POPUP "&File"
+    POPUP "File"
     {
         MENUITEM "New",              CMD_NEW
         MENUITEM "Open...",          CMD_OPEN
@@ -13,14 +13,10 @@ MAIN_MENU MENU
         MENUITEM SEPARATOR
         MENUITEM "Exit",             CMD_EXIT
     }
-    POPUP "&Edit"
+    POPUP "Edit"
     {
         MENUITEM "Wrap long lines",  CMD_WRAP
         MENUITEM "Font...",          CMD_FONT
-    }
-    POPUP "Help"
-    {
-        MENUITEM "About",            CMD_HELP_ABOUT_NOTEPAD
     }
 }
 

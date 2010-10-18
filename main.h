@@ -11,28 +11,26 @@
 
 typedef struct
 {
-  HANDLE   hInstance;
-  HWND     hMainWnd;
-  HWND     hEdit;
-  HFONT    hFont; /* Font used by the edit control */
-  LOGFONTW lfFont;
-  BOOL     bWrapLongLines;
-  WCHAR    szFileName[MAX_PATH];
-  WCHAR    szFileTitle[MAX_PATH];
-  WCHAR    szFilter[2 * MAX_STRING_LEN + 100];
-  BOOL     bOfnIsOpenDialog;
-  INT      iMarginTop;
-  INT      iMarginBottom;
-  INT      iMarginLeft;
-  INT      iMarginRight;
-  WCHAR    szHeader[MAX_PATH];
-  WCHAR    szFooter[MAX_PATH];
+  HANDLE  hInstance;
+  HWND    hMainWnd;
+  HWND    hEdit;
+  HFONT   hFont; /* Font used by the edit control */
+  LOGFONT lfFont;
+  BOOL    bWrapLongLines;
+  CHAR    szFileName[MAX_PATH];
+  CHAR    szFileTitle[MAX_PATH];
+  CHAR    szFilter[2 * MAX_STRING_LEN + 100];
+  BOOL    bOfnIsOpenDialog;
+  INT     iMarginTop;
+  INT     iMarginBottom;
+  INT     iMarginLeft;
+  INT     iMarginRight;
+  CHAR    szHeader[MAX_PATH];
+  CHAR    szFooter[MAX_PATH];
 } NOTEPAD_GLOBALS;
 
 extern NOTEPAD_GLOBALS Globals;
 
-VOID SetFileNameAndEncoding(LPCWSTR szFileName);
-void NOTEPAD_DoFind(FINDREPLACEW *fr);
-DWORD get_dpi(void);
+VOID SetFileName(LPCSTR szFileName);
 
 #endif // MAIN_H

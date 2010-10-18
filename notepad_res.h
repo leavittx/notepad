@@ -18,8 +18,6 @@
 #define CMD_WRAP                0x119
 #define CMD_FONT                0x140
 
-#define CMD_HELP_ABOUT_NOTEPAD  0x134
-
 /* Strings */
 #define STRING_NOTEPAD 0x170
 #define STRING_ERROR 0x171

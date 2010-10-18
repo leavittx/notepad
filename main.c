@@ -18,23 +18,20 @@ static RECT main_rect;
  *
  *  Sets global file name.
  */
-VOID SetFileName(LPCWSTR szFileName)
+VOID SetFileName(LPCSTR szFileName)
 {
-    lstrcpyW(Globals.szFileName, szFileName);
+    lstrcpy(Globals.szFileName, szFileName);
     Globals.szFileTitle[0] = 0;
-    GetFileTitleW(szFileName, Globals.szFileTitle, sizeof(Globals.szFileTitle));
+    GetFileTitle(szFileName, Globals.szFileTitle, sizeof(Globals.szFileTitle));
 }
 
 /***********************************************************************
  *
- *           NOTEPAD_LoadSettingFromRegistry
- *
- *  Load setting from registry HKCU\Software\Microsoft\Notepad.
+ *           NOTEPAD_SetParams
  */
-static VOID NOTEPAD_LoadSettingFromRegistry(void)
+static VOID NOTEPAD_SetParams(void)
 {
-    static const WCHAR systemW[] = { 'S','y','s','t','e','m','\0' };
-    HKEY hkey;
+    static const CHAR systemW[] = { 'S','y','s','t','e','m','\0' };
     INT base_length, dx, dy;
 
     base_length = (GetSystemMetrics(SM_CXSCREEN) > GetSystemMetrics(SM_CYSCREEN))?
@@ -63,7 +60,7 @@ static VOID NOTEPAD_LoadSettingFromRegistry(void)
     Globals.lfFont.lfClipPrecision  = CLIP_DEFAULT_PRECIS;
     Globals.lfFont.lfQuality        = DEFAULT_QUALITY;
     Globals.lfFont.lfPitchAndFamily = FIXED_PITCH | FF_DONTCARE;
-    lstrcpyW(Globals.lfFont.lfFaceName, systemW);
+    lstrcpy(Globals.lfFont.lfFaceName, systemW);
 }
 
 /***********************************************************************
@@ -76,19 +73,17 @@ static int NOTEPAD_MenuCommand(WPARAM wParam)
 {
     switch (wParam)
     {
-    case CMD_NEW:               DIALOG_FileNew(); break;
-    case CMD_OPEN:              DIALOG_FileOpen(); break;
-    case CMD_SAVE:              DIALOG_FileSave(); break;
-    case CMD_SAVE_AS:           DIALOG_FileSaveAs(); break;
-    case CMD_EXIT:              DIALOG_FileExit(); break;
+        case CMD_NEW:               DIALOG_FileNew(); break;
+        case CMD_OPEN:              DIALOG_FileOpen(); break;
+        case CMD_SAVE:              DIALOG_FileSave(); break;
+        case CMD_SAVE_AS:           DIALOG_FileSaveAs(); break;
+        case CMD_EXIT:              DIALOG_FileExit(); break;
 
-    case CMD_WRAP:             DIALOG_EditWrap(); break;
-    case CMD_FONT:             DIALOG_SelectFont(); break;
+        case CMD_WRAP:              DIALOG_EditWrap(); break;
+        case CMD_FONT:              DIALOG_SelectFont(); break;
 
-    case CMD_HELP_ABOUT_NOTEPAD: DIALOG_About(); break;
-
-    default:
-        break;
+        default:
+            break;
     }
    return 0;
 }
@@ -98,18 +93,18 @@ static int NOTEPAD_MenuCommand(WPARAM wParam)
  */
 static VOID NOTEPAD_InitData(VOID)
 {
-    LPWSTR p = Globals.szFilter;
-    static const WCHAR txt_files[] = { '*','.','t','x','t',0 };
-    static const WCHAR all_files[] = { '*','.','*',0 };
+    LPSTR p = Globals.szFilter;
+    static const CHAR txt_files[] = { '*','.','t','x','t',0 };
+    static const CHAR all_files[] = { '*','.','*',0 };
 
-    LoadStringW(Globals.hInstance, STRING_TEXT_FILES_TXT, p, MAX_STRING_LEN);
-    p += lstrlenW(p) + 1;
-    lstrcpyW(p, txt_files);
-    p += lstrlenW(p) + 1;
-    LoadStringW(Globals.hInstance, STRING_ALL_FILES, p, MAX_STRING_LEN);
-    p += lstrlenW(p) + 1;
-    lstrcpyW(p, all_files);
-    p += lstrlenW(p) + 1;
+    LoadString(Globals.hInstance, STRING_TEXT_FILES_TXT, p, MAX_STRING_LEN);
+    p += lstrlen(p) + 1;
+    lstrcpy(p, txt_files);
+    p += lstrlen(p) + 1;
+    LoadString(Globals.hInstance, STRING_ALL_FILES, p, MAX_STRING_LEN);
+    p += lstrlen(p) + 1;
+    lstrcpy(p, all_files);
+    p += lstrlen(p) + 1;
     *p = '\0';
 
     CheckMenuItem(GetMenu(Globals.hMainWnd), CMD_WRAP,
@@ -123,86 +118,86 @@ static VOID NOTEPAD_InitData(VOID)
 static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
                                LPARAM lParam)
 {
-    switch (msg) {
-
-    case WM_CREATE:
+    switch (msg)
     {
-        static const WCHAR editW[] = { 'e','d','i','t',0 };
-        DWORD dwStyle = WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
-                        ES_AUTOVSCROLL | ES_MULTILINE | ES_NOHIDESEL;
-        RECT rc;
-        GetClientRect(hWnd, &rc);
+        case WM_CREATE:
+        {
+            static const CHAR editW[] = { 'e','d','i','t',0 };
+            DWORD dwStyle = WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
+                            ES_AUTOVSCROLL | ES_MULTILINE | ES_NOHIDESEL;
+            RECT rc;
+            GetClientRect(hWnd, &rc);
 
-        if (!Globals.bWrapLongLines) dwStyle |= WS_HSCROLL | ES_AUTOHSCROLL;
+            if (!Globals.bWrapLongLines) dwStyle |= WS_HSCROLL | ES_AUTOHSCROLL;
 
-        Globals.hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, editW, NULL,
-                             dwStyle, 0, 0, rc.right, rc.bottom, hWnd,
-                             NULL, Globals.hInstance, NULL);
+            Globals.hEdit = CreateWindowEx(WS_EX_CLIENTEDGE, editW, NULL,
+                                 dwStyle, 0, 0, rc.right, rc.bottom, hWnd,
+                                 NULL, Globals.hInstance, NULL);
 
-        Globals.hFont = CreateFontIndirectW(&Globals.lfFont);
-        SendMessageW(Globals.hEdit, WM_SETFONT, (WPARAM)Globals.hFont, FALSE);
-        SendMessageW(Globals.hEdit, EM_LIMITTEXT, 0, 0);
-        break;
-    }
-
-    case WM_COMMAND:
-        NOTEPAD_MenuCommand(LOWORD(wParam));
-        break;
-
-    case WM_CLOSE:
-        if (DoCloseFile()) {
-            DestroyWindow(hWnd);
+            Globals.hFont = CreateFontIndirect(&Globals.lfFont);
+            SendMessage(Globals.hEdit, WM_SETFONT, (WPARAM)Globals.hFont, FALSE);
+            SendMessage(Globals.hEdit, EM_LIMITTEXT, 0, 0);
+            break;
         }
-        break;
 
-    case WM_QUERYENDSESSION:
-        if (DoCloseFile()) {
-            return 1;
+        case WM_COMMAND:
+            NOTEPAD_MenuCommand(LOWORD(wParam));
+            break;
+
+        case WM_CLOSE:
+            if (DoCloseFile()) {
+                DestroyWindow(hWnd);
+            }
+            break;
+
+        case WM_QUERYENDSESSION:
+            if (DoCloseFile()) {
+                return 1;
+            }
+            break;
+
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+
+        case WM_SIZE:
+            SetWindowPos(Globals.hEdit, NULL, 0, 0, LOWORD(lParam), HIWORD(lParam),
+                         SWP_NOOWNERZORDER | SWP_NOZORDER);
+            break;
+
+        case WM_SETFOCUS:
+            SetFocus(Globals.hEdit);
+            break;
+
+        case WM_DROPFILES:
+        {
+            CHAR szFileName[MAX_PATH];
+            HANDLE hDrop = (HANDLE) wParam;
+
+            DragQueryFile(hDrop, 0, szFileName, ARRAY_SIZE(szFileName));
+            DragFinish(hDrop);
+            DoOpenFile(szFileName);
+            break;
         }
-        break;
 
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-
-    case WM_SIZE:
-        SetWindowPos(Globals.hEdit, NULL, 0, 0, LOWORD(lParam), HIWORD(lParam),
-                     SWP_NOOWNERZORDER | SWP_NOZORDER);
-        break;
-
-    case WM_SETFOCUS:
-        SetFocus(Globals.hEdit);
-        break;
-
-    case WM_DROPFILES:
-    {
-        WCHAR szFileName[MAX_PATH];
-        HANDLE hDrop = (HANDLE) wParam;
-
-        DragQueryFileW(hDrop, 0, szFileName, ARRAY_SIZE(szFileName));
-        DragFinish(hDrop);
-        DoOpenFile(szFileName);
-        break;
-    }
-
-    default:
-        return DefWindowProcW(hWnd, msg, wParam, lParam);
+        default:
+            return DefWindowProc(hWnd, msg, wParam, lParam);
     }
     return 0;
 }
 
-static int AlertFileDoesNotExist(LPCWSTR szFileName)
+static int AlertFileDoesNotExist(LPCSTR szFileName)
 {
    int nResult;
-   WCHAR szMessage[MAX_STRING_LEN];
-   WCHAR szResource[MAX_STRING_LEN];
+   CHAR szMessage[MAX_STRING_LEN];
+   CHAR szResource[MAX_STRING_LEN];
 
-   LoadStringW(Globals.hInstance, STRING_DOESNOTEXIST, szResource, ARRAY_SIZE(szResource));
-   wsprintfW(szMessage, szResource, szFileName);
+   LoadString(Globals.hInstance, STRING_DOESNOTEXIST, szResource, ARRAY_SIZE(szResource));
+   wsprintf(szMessage, szResource, szFileName);
 
-   LoadStringW(Globals.hInstance, STRING_ERROR, szResource, ARRAY_SIZE(szResource));
+   LoadString(Globals.hInstance, STRING_ERROR, szResource, ARRAY_SIZE(szResource));
 
-   nResult = MessageBoxW(Globals.hMainWnd, szMessage, szResource,
+   nResult = MessageBox(Globals.hMainWnd, szMessage, szResource,
                          MB_ICONEXCLAMATION | MB_YESNOCANCEL);
 
    return(nResult);
@@ -210,7 +205,6 @@ static int AlertFileDoesNotExist(LPCWSTR szFileName)
 
 static void HandleCommandLine(LPSTR cmdline)
 {
-#if 0
     if (*cmdline)
     {
         /* file name is passed in the command line */
@@ -221,22 +215,22 @@ static void HandleCommandLine(LPSTR cmdline)
         }
         else
         {
-            switch (AlertFileDoesNotExist(cmdline)) {
-            case IDYES:
-                SetFileName(cmdline);
-                UpdateWindowCaption();
-                break;
+            switch (AlertFileDoesNotExist(cmdline))
+            {
+                case IDYES:
+                    SetFileName(cmdline);
+                    UpdateWindowCaption();
+                    break;
 
-            case IDNO:
-                break;
+                case IDNO:
+                    break;
 
-            case IDCANCEL:
-                DestroyWindow(Globals.hMainWnd);
-                break;
+                case IDCANCEL:
+                    DestroyWindow(Globals.hMainWnd);
+                    break;
             }
         }
      }
-#endif
 }
 
 /***********************************************************************
@@ -247,35 +241,35 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
 {
     MSG msg;
     HACCEL hAccel;
-    WNDCLASSEXW wc;
+    WNDCLASSEX wc;
     HMONITOR monitor;
     MONITORINFO info;
     INT x, y;
-    static const WCHAR className[] = {'N','o','t','e','p','a','d',0};
-    static const WCHAR winName[]   = {'N','o','t','e','p','a','d',0};
+    static const CHAR className[] = {'N','o','t','e','p','a','d',0};
+    static const CHAR winName[]   = {'N','o','t','e','p','a','d',0};
 
     ZeroMemory(&Globals, sizeof(Globals));
     Globals.hInstance       = hInstance;
-    NOTEPAD_LoadSettingFromRegistry();
+    NOTEPAD_SetParams();
 
     ZeroMemory(&wc, sizeof(wc));
     wc.cbSize        = sizeof(wc);
     wc.lpfnWndProc   = NOTEPAD_WndProc;
     wc.hInstance     = Globals.hInstance;
-    wc.hIcon         = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
-    wc.hIconSm       = LoadIconW(NULL, (LPCWSTR)IDI_APPLICATION);
-    wc.hCursor       = LoadCursorW(0, (LPCWSTR)IDC_ARROW);
+    wc.hIcon         = LoadIcon(NULL, (LPCSTR)IDI_APPLICATION);
+    wc.hIconSm       = LoadIcon(NULL, (LPCSTR)IDI_APPLICATION);
+    wc.hCursor       = LoadCursor(0, (LPCSTR)IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszMenuName  = MAKEINTRESOURCEW(MAIN_MENU);
+    wc.lpszMenuName  = MAKEINTRESOURCE(MAIN_MENU);
     wc.lpszClassName = className;
 
-    if (!RegisterClassExW(&wc)) return FALSE;
+    if (!RegisterClassEx(&wc)) return FALSE;
 
     /* Setup windows */
 
     monitor = MonitorFromRect( &main_rect, MONITOR_DEFAULTTOPRIMARY );
     info.cbSize = sizeof(info);
-    GetMonitorInfoW( monitor, &info );
+    GetMonitorInfo( monitor, &info );
 
     x = main_rect.left;
     y = main_rect.top;
@@ -286,7 +280,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
         x = y = CW_USEDEFAULT;
 
     Globals.hMainWnd =
-        CreateWindowW(className, winName, WS_OVERLAPPEDWINDOW, x, y,
+        CreateWindow(className, winName, WS_OVERLAPPEDWINDOW, x, y,
                       main_rect.right - main_rect.left, main_rect.bottom - main_rect.top,
                       NULL, NULL, Globals.hInstance, NULL);
     if (!Globals.hMainWnd)
@@ -304,10 +298,10 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
 
     HandleCommandLine(cmdline);
 
-    while (GetMessageW(&msg, 0, 0, 0))
+    while (GetMessage(&msg, 0, 0, 0))
     {
         TranslateMessage(&msg);
-        DispatchMessageW(&msg);
+        DispatchMessage(&msg);
     }
     return msg.wParam;
 }
