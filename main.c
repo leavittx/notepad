@@ -18,7 +18,7 @@ static RECT main_rect;
  *
  *  Sets global file name.
  */
-VOID SetFileName(LPCSTR szFileName)
+void SetFileName(LPCSTR szFileName)
 {
     lstrcpy(Globals.szFileName, szFileName);
     Globals.szFileTitle[0] = 0;
@@ -29,7 +29,7 @@ VOID SetFileName(LPCSTR szFileName)
  *
  *           NOTEPAD_SetParams
  */
-static VOID NOTEPAD_SetParams(void)
+static void NOTEPAD_SetParams(void)
 {
     static const CHAR systemW[] = { 'S','y','s','t','e','m','\0' };
     INT base_length, dx, dy;
@@ -41,26 +41,7 @@ static VOID NOTEPAD_SetParams(void)
     dy = dx * 3 / 4;
     SetRect( &main_rect, 0, 0, dx, dy );
 
-    Globals.bWrapLongLines  = TRUE;
-    Globals.iMarginTop = 2500;
-    Globals.iMarginBottom = 2500;
-    Globals.iMarginLeft = 2000;
-    Globals.iMarginRight = 2000;
-
-    Globals.lfFont.lfHeight         = -12;
-    Globals.lfFont.lfWidth          = 0;
-    Globals.lfFont.lfEscapement     = 0;
-    Globals.lfFont.lfOrientation    = 0;
-    Globals.lfFont.lfWeight         = FW_REGULAR;
-    Globals.lfFont.lfItalic         = FALSE;
-    Globals.lfFont.lfUnderline      = FALSE;
-    Globals.lfFont.lfStrikeOut      = FALSE;
-    Globals.lfFont.lfCharSet        = DEFAULT_CHARSET;
-    Globals.lfFont.lfOutPrecision   = OUT_DEFAULT_PRECIS;
-    Globals.lfFont.lfClipPrecision  = CLIP_DEFAULT_PRECIS;
-    Globals.lfFont.lfQuality        = DEFAULT_QUALITY;
-    Globals.lfFont.lfPitchAndFamily = FIXED_PITCH | FF_DONTCARE;
-    lstrcpy(Globals.lfFont.lfFaceName, systemW);
+    Globals.bWrapLongLines = TRUE;
 }
 
 /***********************************************************************
@@ -80,7 +61,6 @@ static int NOTEPAD_MenuCommand(WPARAM wParam)
         case CMD_EXIT:              DIALOG_FileExit(); break;
 
         case CMD_WRAP:              DIALOG_EditWrap(); break;
-        case CMD_FONT:              DIALOG_SelectFont(); break;
 
         default:
             break;
@@ -91,7 +71,7 @@ static int NOTEPAD_MenuCommand(WPARAM wParam)
 /***********************************************************************
  * Data Initialization
  */
-static VOID NOTEPAD_InitData(VOID)
+static void NOTEPAD_InitData(void)
 {
     LPSTR p = Globals.szFilter;
     static const CHAR txt_files[] = { '*','.','t','x','t',0 };
@@ -122,21 +102,6 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
     {
         case WM_CREATE:
         {
-            static const CHAR editW[] = { 'e','d','i','t',0 };
-            DWORD dwStyle = WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL |
-                            ES_AUTOVSCROLL | ES_MULTILINE | ES_NOHIDESEL;
-            RECT rc;
-            GetClientRect(hWnd, &rc);
-
-            if (!Globals.bWrapLongLines) dwStyle |= WS_HSCROLL | ES_AUTOHSCROLL;
-
-            Globals.hEdit = CreateWindowEx(WS_EX_CLIENTEDGE, editW, NULL,
-                                 dwStyle, 0, 0, rc.right, rc.bottom, hWnd,
-                                 NULL, Globals.hInstance, NULL);
-
-            Globals.hFont = CreateFontIndirect(&Globals.lfFont);
-            SendMessage(Globals.hEdit, WM_SETFONT, (WPARAM)Globals.hFont, FALSE);
-            SendMessage(Globals.hEdit, EM_LIMITTEXT, 0, 0);
             break;
         }
 
@@ -161,12 +126,6 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
             break;
 
         case WM_SIZE:
-            SetWindowPos(Globals.hEdit, NULL, 0, 0, LOWORD(lParam), HIWORD(lParam),
-                         SWP_NOOWNERZORDER | SWP_NOZORDER);
-            break;
-
-        case WM_SETFOCUS:
-            SetFocus(Globals.hEdit);
             break;
 
         case WM_DROPFILES:
@@ -240,7 +199,6 @@ static void HandleCommandLine(LPSTR cmdline)
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, LPSTR cmdline, int show)
 {
     MSG msg;
-    HACCEL hAccel;
     WNDCLASSEX wc;
     HMONITOR monitor;
     MONITORINFO info;

@@ -16,7 +16,6 @@
 #define CMD_EXIT                0x108
 
 #define CMD_WRAP                0x119
-#define CMD_FONT                0x140
 
 /* Strings */
 #define STRING_NOTEPAD 0x170

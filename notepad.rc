@@ -16,7 +16,6 @@ MAIN_MENU MENU
     POPUP "Edit"
     {
         MENUITEM "Wrap long lines",  CMD_WRAP
-        MENUITEM "Font...",          CMD_FONT
     }
 }
 

@@ -3,19 +3,18 @@
 #ifndef DIALOG_H
 #define DIALOG_H
 
-VOID DIALOG_FileNew(VOID);
-VOID DIALOG_FileOpen(VOID);
-BOOL DIALOG_FileSave(VOID);
-BOOL DIALOG_FileSaveAs(VOID);
-VOID DIALOG_FileExit(VOID);
+void DIALOG_FileNew(void);
+void DIALOG_FileOpen(void);
+BOOL DIALOG_FileSave(void);
+BOOL DIALOG_FileSaveAs(void);
+void DIALOG_FileExit(void);
 
-VOID DIALOG_EditWrap(VOID);
-VOID DIALOG_SelectFont(VOID);
+void DIALOG_EditWrap(void);
 
 int DIALOG_StringMsgBox(HWND hParent, int formatId, LPCSTR szString, DWORD dwFlags);
 
 /* utility functions */
-VOID ShowLastError(void);
+void ShowLastError(void);
 void UpdateWindowCaption(void);
 BOOL FileExists(LPCSTR szFilename);
 BOOL DoCloseFile(void);

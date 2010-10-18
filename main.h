@@ -13,24 +13,14 @@ typedef struct
 {
   HANDLE  hInstance;
   HWND    hMainWnd;
-  HWND    hEdit;
-  HFONT   hFont; /* Font used by the edit control */
-  LOGFONT lfFont;
   BOOL    bWrapLongLines;
   CHAR    szFileName[MAX_PATH];
   CHAR    szFileTitle[MAX_PATH];
   CHAR    szFilter[2 * MAX_STRING_LEN + 100];
-  BOOL    bOfnIsOpenDialog;
-  INT     iMarginTop;
-  INT     iMarginBottom;
-  INT     iMarginLeft;
-  INT     iMarginRight;
-  CHAR    szHeader[MAX_PATH];
-  CHAR    szFooter[MAX_PATH];
 } NOTEPAD_GLOBALS;
 
 extern NOTEPAD_GLOBALS Globals;
 
-VOID SetFileName(LPCSTR szFileName);
+void SetFileName(LPCSTR szFileName);
 
 #endif // MAIN_H
