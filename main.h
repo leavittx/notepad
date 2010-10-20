@@ -15,12 +15,13 @@ typedef unsigned int uint;
 typedef struct {
     HANDLE hInstance;
     HWND   hMainWnd;
+    int    W, H;
     bool   isWrapLongLines;
     char   FileName[MAX_PATH];
     char   FileTitle[MAX_PATH];
-    char   Filter[2 * MAX_STRING_LEN + 100];
+    char   Filter[MAX_STRING_LEN];
     Text   TextList;
-    int    CharWidth, CharHeight;
+    int    CharW, CharH;
 } NOTEPAD_GLOBALS;
 
 extern NOTEPAD_GLOBALS Globals;

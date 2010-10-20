@@ -166,17 +166,22 @@ void DoOpenFile(const char *FileName)
         //AlertFileTooBig();
     //rewind(f);
 
+    Globals.TextList.LongestStringLength = 0;
     while (1) {
         int c = fgetc(f);
         if (c == '\n') {
             fseek(f, -curstrlen-1, SEEK_CUR);
-            AddTextItem(f, curstrlen);
+            EDIT_AddTextItem(f, curstrlen);
             fgetc(f); // Read '\n'
+            if (curstrlen > Globals.TextList.LongestStringLength)
+                Globals.TextList.LongestStringLength = curstrlen;
             curstrlen = 0;
         }
         else if (c == EOF) {
             fseek(f, -curstrlen, SEEK_CUR);
-            AddTextItem(f, curstrlen);
+            EDIT_AddTextItem(f, curstrlen);
+            if (curstrlen > Globals.TextList.LongestStringLength)
+                Globals.TextList.LongestStringLength = curstrlen;
             break;
         }
         else {
@@ -184,14 +189,19 @@ void DoOpenFile(const char *FileName)
         }
     }
 
+    for (TextItem *a = Globals.TextList.first; ; a = a->next) {
+        a->noffsets = 0;
+        if (a == Globals.TextList.last)
+            break;
+    }
+    EDIT_CountOffsets();
+
     // Debug
-    TextItem *a;
-    for (a = Globals.TextList.first; ; a = a->next) {
+    for (TextItem *a = Globals.TextList.first; ; a = a->next) {
         fputs(a->str.data, stdout);
         fputc('\n', stdout);
-        if (a == Globals.TextList.last) {
+        if (a == Globals.TextList.last)
             break;
-        }
     }
 
     SetFileName(FileName);

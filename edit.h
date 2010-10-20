@@ -14,13 +14,19 @@ typedef struct {
 
 typedef struct tagTextItem {
     String str;
+    int *drawnums;
+    int *offsets;
+    int noffsets;
     struct tagTextItem *prev, *next;
 } TextItem;
 
 typedef struct {
   TextItem *first, *last;
+  int nDrawLines;
+  int LongestStringLength;
 } Text;
 
-bool AddTextItem(FILE *f, int len);
+void EDIT_AddTextItem(FILE *f, int len);
+void EDIT_CountOffsets(void);
 
 #endif // EDIT_H

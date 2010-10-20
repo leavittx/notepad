@@ -42,6 +42,9 @@ static void NOTEPAD_SetParams(void)
     dy = dx * 3 / 4;
     SetRect(&main_rect, 0, 0, dx, dy);
 
+    Globals.W = dx;
+    Globals.H = dy;
+
     Globals.isWrapLongLines = true;
 }
 
@@ -52,16 +55,16 @@ static void NOTEPAD_SetParams(void)
 static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
 {
     HDC hDC;
-    TEXTMETRIC metric;
+    TEXTMETRIC text_metric;
 
     hDC = GetDC(hWnd);
     SelectObject(hDC, GetStockObject(SYSTEM_FIXED_FONT));
 
-    GetTextMetrics(hDC, &metric);
-    Globals.CharWidth = metric.tmAveCharWidth;
-    Globals.CharHeight = metric.tmHeight + metric.tmExternalLeading;
+    GetTextMetrics(hDC, &text_metric);
+    Globals.CharW = text_metric.tmAveCharWidth;
+    Globals.CharH = text_metric.tmHeight + text_metric.tmExternalLeading;
 
-    CreateCaret(hWnd, NULL, 0, Globals.CharHeight);
+    CreateCaret(hWnd, NULL, 0, Globals.CharH);
     SetCaretPos(0, 0);
     ShowCaret(hWnd);
 
@@ -76,6 +79,37 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
  */
 static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
 {
+    SCROLLINFO scroll_info;
+
+    Globals.W = W;
+    Globals.H = H;
+
+    if (Globals.FileName[0] == '\0' ||
+            W == 0 || H == 0) {
+        return;
+    }
+
+    EDIT_CountOffsets();
+
+    // Vertical scroll
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask = SIF_PAGE | SIF_RANGE;
+    scroll_info.nMin = 0;
+    scroll_info.nMax = Globals.TextList.nDrawLines - 1;
+    scroll_info.nPage = H / Globals.CharH;
+    SetScrollInfo(hWnd, SB_VERT, &scroll_info, TRUE);
+
+    // Horizontal scroll
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask = SIF_PAGE | SIF_RANGE;
+    scroll_info.nMin = 0;
+    if (Globals.isWrapLongLines)
+        scroll_info.nMax = W / Globals.CharW;
+    else
+        scroll_info.nMax = Globals.TextList.LongestStringLength + 1;
+    scroll_info.nPage = W / Globals.CharW + 1;
+    SetScrollInfo(hWnd, SB_HORZ, &scroll_info, TRUE);
+
     InvalidateRect(hWnd, NULL, false);
 }
 
@@ -124,21 +158,70 @@ static void NOTEPAD_OnPaint(HWND hWnd)
     HDC hDC;
     PAINTSTRUCT ps;
     RECT rc;
+    SCROLLINFO scroll_info;
+    int vert_pos, horiz_pos, paint_beg, paint_end;
+    int noffset = 0, maxlen = Globals.W / Globals.CharW;;
+    int x = 0, y = 0;
+    int i;
+
+    // TODO
+    if (Globals.FileName[0] == '\0') {
+        return;
+    }
+
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask  = SIF_POS;
+    GetScrollInfo(hWnd, SB_VERT, &scroll_info);
+    vert_pos = scroll_info.nPos;
+
+    GetScrollInfo(hWnd, SB_HORZ, &scroll_info);
+    horiz_pos = scroll_info.nPos;
+
+    paint_beg = max(0, 0/*vert_pos + ps.rcPaint.top / Globals.CharH*/);
+    paint_end = min(Globals.TextList.nDrawLines - 1,
+                    vert_pos + ps.rcPaint.bottom / Globals.CharH);
+
+    printf("%i %i\n", paint_beg, paint_end);
+
+    TextItem *a;
+    for (a = Globals.TextList.first;
+         a->drawnums[0] < paint_beg && a != Globals.TextList.last;
+         a = a->next);
+    if (a == Globals.TextList.last) {
+        if (a->drawnums[0] + a->noffsets - 1 >= paint_beg) { // -1: Not count first offset
+            noffset = paint_beg - a->drawnums[0];
+        }
+        else {
+            return;
+        }
+    }
+    else {
+        if (a->drawnums[0] != paint_beg) {
+            a = a->prev;
+            noffset = paint_beg - a->drawnums[0];
+        }
+    }
 
     GetClientRect(hWnd, &rc);
-
     hDC = BeginPaint(hWnd, &ps);
-
     FillRect(hDC, &rc, GetStockObject(WHITE_BRUSH));
+    SelectObject(hDC, GetStockObject(SYSTEM_FIXED_FONT));
 
-    if (Globals.FileName[0] != '\0') {
-        TextItem *a;
-        int i = 0;
-        for (a = Globals.TextList.first; ; a = a->next) {
-            TextOut(hDC, 0, Globals.CharHeight * i++, a->str.data, a->str.len);
-            if (a == Globals.TextList.last) {
+    for (i = paint_beg; i <= paint_end; i++)
+    {
+        x = Globals.CharW * (0 - horiz_pos);
+        y = Globals.CharH * (i - vert_pos);
+        TextOutA(hDC, x, y,
+                 a->str.data + noffset * maxlen,
+                 (a->str.len - noffset * maxlen) >= maxlen ?
+                     maxlen :
+                     (a->str.len - noffset * maxlen) % maxlen);
+        noffset++;
+        if (noffset >= a->noffsets) {
+            if (a == Globals.TextList.last)
                 break;
-            }
+            noffset = 0;
+            a = a->next;
         }
     }
 
@@ -253,50 +336,11 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
         default:
             return DefWindowProc(hWnd, msg, wParam, lParam);
     }
-
-#if 0
-        case WM_CREATE:
-            break;
-
-        case WM_COMMAND:
-            NOTEPAD_MenuCommand(LOWORD(wParam));
-            break;
-
-        case WM_CLOSE:
-            if (DoCloseFile()) {
-                DestroyWindow(hWnd);
-            }
-            break;
-
-        case WM_QUERYENDSESSION:
+/*case WM_QUERYENDSESSION:
             if (DoCloseFile()) {
                 return 1;
             }
-            break;
-
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            break;
-
-        case WM_SIZE:
-            break;
-
-        case WM_DROPFILES:
-        {
-            char FileName[MAX_PATH];
-            HANDLE hDrop = (HANDLE) wParam;
-
-            DragQueryFile(hDrop, 0, FileName, ARRAY_SIZE(FileName));
-            DragFinish(hDrop);
-            DoOpenFile(FileName);
-            break;
-        }
-
-        default:
-            return DefWindowProc(hWnd, msg, wParam, lParam);
-    }
-    return 0;
-#endif
+            break;*/
 }
 
 static int AlertFileDoesNotExist(const char *FileName)
@@ -361,7 +405,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
     static const char winName[]   = {'N','o','t','e','p','a','d',0};
 
     ZeroMemory(&Globals, sizeof(Globals));
-    Globals.hInstance       = hInstance;
+    Globals.hInstance = hInstance;
     NOTEPAD_SetParams();
 
     ZeroMemory(&wc, sizeof(wc));
@@ -385,18 +429,19 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
 
     x = main_rect.left;
     y = main_rect.top;
-    if (main_rect.left >= info.rcWork.right ||
-        main_rect.top >= info.rcWork.bottom ||
-        main_rect.right < info.rcWork.left ||
-        main_rect.bottom < info.rcWork.top)
-        x = y = CW_USEDEFAULT;
+    if (main_rect.left   >= info.rcWork.right ||
+        main_rect.top    >= info.rcWork.bottom ||
+        main_rect.right  <  info.rcWork.left ||
+        main_rect.bottom <  info.rcWork.top)
+            x = y = CW_USEDEFAULT;
 
-    Globals.hMainWnd =
-        CreateWindow(className, winName, WS_OVERLAPPEDWINDOW, x, y,
-                      main_rect.right - main_rect.left, main_rect.bottom - main_rect.top,
-                      NULL, NULL, Globals.hInstance, NULL);
-    if (!Globals.hMainWnd)
-    {
+    Globals.hMainWnd = CreateWindow(className, winName,
+                                    WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL,
+                                    x, y,
+                                    main_rect.right - main_rect.left,
+                                    main_rect.bottom - main_rect.top,
+                                    NULL, NULL, Globals.hInstance, NULL);
+    if (!Globals.hMainWnd) {
         ShowLastError();
         ExitProcess(1);
     }
