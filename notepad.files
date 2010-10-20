@@ -5,3 +5,5 @@ dialog.h
 main.h
 notepad_res.h
 notepad.rc
+edit.c
+edit.h

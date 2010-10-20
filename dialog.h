@@ -5,19 +5,19 @@
 
 void DIALOG_FileNew(void);
 void DIALOG_FileOpen(void);
-BOOL DIALOG_FileSave(void);
-BOOL DIALOG_FileSaveAs(void);
+bool DIALOG_FileSave(void);
+bool DIALOG_FileSaveAs(void);
 void DIALOG_FileExit(void);
 
 void DIALOG_EditWrap(void);
 
-int DIALOG_StringMsgBox(HWND hParent, int formatId, LPCSTR szString, DWORD dwFlags);
+int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dwFlags);
 
 /* utility functions */
 void ShowLastError(void);
 void UpdateWindowCaption(void);
-BOOL FileExists(LPCSTR szFilename);
-BOOL DoCloseFile(void);
-void DoOpenFile(LPCSTR szFileName);
+bool FileExists(const char *Filename);
+bool DoCloseFile(void);
+void DoOpenFile(const char *FileName);
 
 #endif // DIALOG_H

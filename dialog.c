@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <shlwapi.h> // for wnsprintf()
+#include <stdio.h>
 
 #include "main.h"
 #include "dialog.h"
@@ -11,164 +12,199 @@ void ShowLastError(void)
     DWORD error = GetLastError();
     if (error != NO_ERROR)
     {
-        LPSTR lpMsgBuf;
-        CHAR szTitle[MAX_STRING_LEN];
+        char *lpMsgBuf;
+        char Title[MAX_STRING_LEN];
 
-        LoadString(Globals.hInstance, STRING_ERROR, szTitle, ARRAY_SIZE(szTitle));
+        LoadString(Globals.hInstance, STRING_ERROR, Title, ARRAY_SIZE(Title));
         FormatMessage(
             FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-            NULL, error, 0, (LPSTR)&lpMsgBuf, 0, NULL);
-        MessageBox(NULL, lpMsgBuf, szTitle, MB_OK | MB_ICONERROR);
+            NULL, error, 0, (char *)&lpMsgBuf, 0, NULL);
+        MessageBox(NULL, lpMsgBuf, Title, MB_OK | MB_ICONERROR);
         LocalFree(lpMsgBuf);
     }
 }
 
 /**
- * Sets the caption of the main window according to Globals.szFileTitle:
+ * Sets the caption of the main window according to Globals.FileTitle:
  *    Untitled - Notepad        if no file is open
  *    filename - Notepad        if a file is given
  */
 void UpdateWindowCaption(void)
 {
-  CHAR szCaption[MAX_STRING_LEN];
-  CHAR szNotepad[MAX_STRING_LEN];
-  static const CHAR hyphenW[] = { ' ','-',' ',0 };
+  char Caption[MAX_STRING_LEN];
+  char Notepad[MAX_STRING_LEN];
+  static const char hyphenW[] = { ' ','-',' ',0 };
 
-  if (Globals.szFileTitle[0] != '\0')
-      lstrcpy(szCaption, Globals.szFileTitle);
+  if (Globals.FileTitle[0] != '\0')
+      lstrcpy(Caption, Globals.FileTitle);
   else
-      LoadString(Globals.hInstance, STRING_UNTITLED, szCaption, ARRAY_SIZE(szCaption));
+      LoadString(Globals.hInstance, STRING_UNTITLED, Caption, ARRAY_SIZE(Caption));
 
-  LoadString(Globals.hInstance, STRING_NOTEPAD, szNotepad, ARRAY_SIZE(szNotepad));
-  lstrcat(szCaption, hyphenW);
-  lstrcat(szCaption, szNotepad);
+  LoadString(Globals.hInstance, STRING_NOTEPAD, Notepad, ARRAY_SIZE(Notepad));
+  lstrcat(Caption, hyphenW);
+  lstrcat(Caption, Notepad);
 
-  SetWindowText(Globals.hMainWnd, szCaption);
+  SetWindowText(Globals.hMainWnd, Caption);
 }
 
-int DIALOG_StringMsgBox(HWND hParent, int formatId, LPCSTR szString, DWORD dwFlags)
+int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dwFlags)
 {
-   CHAR szMessage[MAX_STRING_LEN];
-   CHAR szResource[MAX_STRING_LEN];
+   char Message[MAX_STRING_LEN];
+   char Resource[MAX_STRING_LEN];
 
-   /* Load and format szMessage */
-   LoadString(Globals.hInstance, formatId, szResource, ARRAY_SIZE(szResource));
-   wnsprintf(szMessage, ARRAY_SIZE(szMessage), szResource, szString);
+   /* Load and format  Message */
+   LoadString(Globals.hInstance, formatId, Resource, ARRAY_SIZE(Resource));
+   wnsprintf(Message, ARRAY_SIZE(Message), Resource, String);
 
-   /* Load szCaption */
+   /* Load  Caption */
    if ((dwFlags & MB_ICONMASK) == MB_ICONEXCLAMATION)
-     LoadString(Globals.hInstance, STRING_ERROR,  szResource, ARRAY_SIZE(szResource));
+     LoadString(Globals.hInstance, STRING_ERROR,  Resource, ARRAY_SIZE(Resource));
    else
-     LoadString(Globals.hInstance, STRING_NOTEPAD,  szResource, ARRAY_SIZE(szResource));
+     LoadString(Globals.hInstance, STRING_NOTEPAD,  Resource, ARRAY_SIZE(Resource));
 
    /* Display Modal Dialog */
    if (hParent == NULL)
      hParent = Globals.hMainWnd;
-   return MessageBox(hParent, szMessage, szResource, dwFlags);
+   return MessageBox(hParent, Message, Resource, dwFlags);
 }
 
-static void AlertFileNotFound(LPCSTR szFileName)
+static void AlertFileNotFound(const char *FileName)
 {
-   DIALOG_StringMsgBox(NULL, STRING_NOTFOUND, szFileName, MB_ICONEXCLAMATION|MB_OK);
+   DIALOG_StringMsgBox(NULL, STRING_NOTFOUND, FileName, MB_ICONEXCLAMATION|MB_OK);
 }
 
-static int AlertFileNotSaved(LPCSTR szFileName)
+static int AlertFileNotSaved(const char *FileName)
 {
-   CHAR szUntitled[MAX_STRING_LEN];
+   char Untitled[MAX_STRING_LEN];
 
-   LoadString(Globals.hInstance, STRING_UNTITLED, szUntitled, ARRAY_SIZE(szUntitled));
-   return DIALOG_StringMsgBox(NULL, STRING_NOTSAVED, szFileName[0] ? szFileName : szUntitled,
+   LoadString(Globals.hInstance, STRING_UNTITLED, Untitled, ARRAY_SIZE(Untitled));
+   return DIALOG_StringMsgBox(NULL, STRING_NOTSAVED, FileName[0] ? FileName :  Untitled,
      MB_ICONQUESTION|MB_YESNOCANCEL);
 }
 
 /**
  * Returns:
- *   TRUE  - if file exists
- *   FALSE - if file does not exist
+ *   true  - if file exists
+ *   false - if file does not exist
  */
-BOOL FileExists(LPCSTR szFilename)
+bool FileExists(const char *Filename)
 {
-   WIN32_FIND_DATA entry;
-   HANDLE hFile;
+    FILE *f;
 
-   hFile = FindFirstFile(szFilename, &entry);
-   FindClose(hFile);
-
-   return (hFile != INVALID_HANDLE_VALUE);
+    f = fopen(Filename, "rt");
+    if (f == NULL) {
+        return false;
+    }
+    else {
+        fclose(f);
+        return true;
+    }
 }
 
-typedef enum
-{
+typedef enum {
     SAVED_OK,
     SAVE_FAILED,
     SHOW_SAVEAS_DIALOG
 } SAVE_STATUS;
 
-/* szFileName is the filename to save under.
+/* FileName is the filename to save under.
  *
  * If the function succeeds, it returns SAVED_OK.
  * If the function fails, it returns SAVE_FAILED.
  */
-static SAVE_STATUS DoSaveFile(LPCSTR szFileName)
+static SAVE_STATUS DoSaveFile(const char *FileName)
 {
     return SAVED_OK;
 }
 
 /**
  * Returns:
- *   TRUE  - User agreed to close (both save/don't save)
- *   FALSE - User cancelled close by selecting "Cancel"
+ *   true  - User agreed to close (both save/don't save)
+ *   false - User cancelled close by selecting "Cancel"
  */
-BOOL DoCloseFile(void)
+bool DoCloseFile(void)
 {
-    int nResult;
-    static const CHAR empty_strW[] = { 0 };
+    int Result;
+    static const char empty_str[] = { 0 };
 
-    if (0/*ismodified*/)
-    {
+    if (0/*ismodified*/) {
         /* prompt user to save changes */
-        nResult = AlertFileNotSaved(Globals.szFileName);
-        switch (nResult)
-        {
-            case IDYES:
-                return DIALOG_FileSave();
-
-            case IDNO:
-                break;
-
-            case IDCANCEL:
-                return(FALSE);
-
-            default:
-                return(FALSE);
+        Result = AlertFileNotSaved(Globals.FileName);
+        switch (Result) {
+            case IDYES:     return DIALOG_FileSave();
+            case IDNO:      break;
+            case IDCANCEL:  return(false);
+            default:        return(false);
         }
     }
 
-    SetFileName(empty_strW);
+    SetFileName(empty_str);
 
     UpdateWindowCaption();
-    return(TRUE);
+    return(true);
 }
 
-void DoOpenFile(LPCSTR szFileName)
+void DoOpenFile(const char *FileName)
 {
+    FILE *f;
+    //int size;
+    int curstrlen = 0;
+
     /* Close any files and prompt to save changes */
     if (!DoCloseFile())
         return;
 
-    // Open the file
+    f = fopen(FileName, "rb");
+    if (f == NULL) {
+        AlertFileNotFound(FileName);
+        return;
+    }
 
-    SetFileName(szFileName);
+    //fseek(f, 0, SEEK_END);
+    //size = ftell(f);
+    //if (size > MAX_FILE_SIZE)
+        //AlertFileTooBig();
+    //rewind(f);
+
+    while (1) {
+        int c = fgetc(f);
+        if (c == '\n') {
+            fseek(f, -curstrlen-1, SEEK_CUR);
+            AddTextItem(f, curstrlen);
+            fgetc(f); // Read '\n'
+            curstrlen = 0;
+        }
+        else if (c == EOF) {
+            fseek(f, -curstrlen, SEEK_CUR);
+            AddTextItem(f, curstrlen);
+            break;
+        }
+        else {
+            curstrlen++;
+        }
+    }
+
+    // Debug
+    TextItem *a;
+    for (a = Globals.TextList.first; ; a = a->next) {
+        fputs(a->str.data, stdout);
+        fputc('\n', stdout);
+        if (a == Globals.TextList.last) {
+            break;
+        }
+    }
+
+    SetFileName(FileName);
     UpdateWindowCaption();
 }
 
 void DIALOG_FileNew(void)
 {
-    static const CHAR empty_strW[] = { 0 };
+    static const char empty_str[] = { 0 };
 
     /* Close any files and prompt to save changes */
     if (DoCloseFile()) {
-        SetWindowText(Globals.hMainWnd, empty_strW);
+        SetWindowText(Globals.hMainWnd, empty_str);
         UpdateWindowCaption();
     }
 }
@@ -176,86 +212,81 @@ void DIALOG_FileNew(void)
 void DIALOG_FileOpen(void)
 {
     OPENFILENAME openfilename;
-    CHAR szPath[MAX_PATH];
-    static const CHAR szDefaultExt[] = { 't','x','t',0 };
-    static const CHAR txt_files[] = { '*','.','t','x','t',0 };
+    char Path[MAX_PATH];
+    static const char DefaultExt[] = { 't','x','t',0 };
+    static const char txt_files[] = { '*','.','t','x','t',0 };
 
     ZeroMemory(&openfilename, sizeof(openfilename));
 
-    lstrcpy(szPath, txt_files);
+    lstrcpy(Path, txt_files);
 
     openfilename.lStructSize       = sizeof(openfilename);
     openfilename.hwndOwner         = Globals.hMainWnd;
     openfilename.hInstance         = Globals.hInstance;
-    openfilename.lpstrFilter       = Globals.szFilter;
-    openfilename.lpstrFile         = szPath;
-    openfilename.nMaxFile          = ARRAY_SIZE(szPath);
-    openfilename.Flags = OFN_ENABLETEMPLATE | OFN_EXPLORER |
-                         OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST |
+    openfilename.lpstrFilter       = Globals.Filter;
+    openfilename.lpstrFile         = Path;
+    openfilename.nMaxFile          = ARRAY_SIZE(Path);
+    openfilename.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST |
                          OFN_HIDEREADONLY | OFN_ENABLESIZING;
-    openfilename.lpstrDefExt       = szDefaultExt;
+    openfilename.lpstrDefExt       = DefaultExt;
 
     if (GetOpenFileName(&openfilename))
         DoOpenFile(openfilename.lpstrFile);
 }
 
-/* Return FALSE to cancel close */
-BOOL DIALOG_FileSave(void)
+/* Return false to cancel close */
+bool DIALOG_FileSave(void)
 {
-    if (Globals.szFileName[0] == '\0')
+    if (Globals.FileName[0] == '\0')
         return DIALOG_FileSaveAs();
     else
     {
-        switch (DoSaveFile(Globals.szFileName))
+        switch (DoSaveFile(Globals.FileName))
         {
-            case SAVED_OK:
-                return TRUE;
-            case SHOW_SAVEAS_DIALOG:
-                return DIALOG_FileSaveAs();
-            default:
-                return FALSE;
+            case SAVED_OK:           return true;
+            case SHOW_SAVEAS_DIALOG: return DIALOG_FileSaveAs();
+            default:                 return false;
         }
     }
 }
 
-BOOL DIALOG_FileSaveAs(void)
+bool DIALOG_FileSaveAs(void)
 {
     OPENFILENAME saveas;
-    CHAR szPath[MAX_PATH];
-    static const CHAR szDefaultExt[] = { 't','x','t',0 };
-    static const CHAR txt_files[] = { '*','.','t','x','t',0 };
+    char Path[MAX_PATH];
+    static const char DefaultExt[] = { 't','x','t',0 };
+    static const char txt_files[] = { '*','.','t','x','t',0 };
 
     ZeroMemory(&saveas, sizeof(saveas));
 
-    lstrcpy(szPath, txt_files);
+    lstrcpy(Path, txt_files);
 
     saveas.lStructSize       = sizeof(OPENFILENAMEW);
     saveas.hwndOwner         = Globals.hMainWnd;
     saveas.hInstance         = Globals.hInstance;
-    saveas.lpstrFilter       = Globals.szFilter;
-    saveas.lpstrFile         = szPath;
-    saveas.nMaxFile          = ARRAY_SIZE(szPath);
-    saveas.Flags          = OFN_ENABLETEMPLATE | OFN_ENABLEHOOK | OFN_EXPLORER |
-                            OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT |
-                            OFN_HIDEREADONLY | OFN_ENABLESIZING;
-    saveas.lpstrDefExt       = szDefaultExt;
+    saveas.lpstrFilter       = Globals.Filter;
+    saveas.lpstrFile         = Path;
+    saveas.nMaxFile          = ARRAY_SIZE(Path);
+    saveas.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT |
+                   OFN_HIDEREADONLY | OFN_ENABLESIZING;
+    saveas.lpstrDefExt       = DefaultExt;
 
 retry:
     if (!GetSaveFileName(&saveas))
-        return FALSE;
+        return false;
 
-    switch (DoSaveFile(szPath))
+    switch (DoSaveFile(Path))
     {
         case SAVED_OK:
-            SetFileName(szPath);
+            SetFileName(Path);
             UpdateWindowCaption();
-            return TRUE;
+            return true;
 
         case SHOW_SAVEAS_DIALOG:
             goto retry;
 
         default:
-            return FALSE;
+            return false;
     }
 }
 
@@ -266,7 +297,7 @@ void DIALOG_FileExit(void)
 
 void DIALOG_EditWrap(void)
 {
-    Globals.bWrapLongLines = !Globals.bWrapLongLines;
+    Globals.isWrapLongLines = !Globals.isWrapLongLines;
     CheckMenuItem(GetMenu(Globals.hMainWnd), CMD_WRAP,
-        MF_BYCOMMAND | (Globals.bWrapLongLines ? MF_CHECKED : MF_UNCHECKED));
+        MF_BYCOMMAND | (Globals.isWrapLongLines ? MF_CHECKED : MF_UNCHECKED));
 }
