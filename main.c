@@ -65,19 +65,36 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
     Globals.CharW = text_metric.tmAveCharWidth;
     Globals.CharH = text_metric.tmHeight + text_metric.tmExternalLeading;
 
-    CreateCaret(hWnd, NULL, 0, Globals.CharH);
-    SetCaretPos(0, 0);
-    ShowCaret(hWnd);
-
     ReleaseDC(hWnd, hDC);
     return true;
 }
 
 /***********************************************************************
  *
+ *           NOTEPAD_OnSetFocus
+ */
+static void NOTEPAD_OnSetFocus(HWND hWnd, HWND lostFocusWnd)
+{
+    CreateCaret(hWnd, NULL, 0, Globals.CharH);
+    SetCaretPos(0, 0/*marginX + caretXpos * tm.tmAveCharWidth, caretYpos * tm.tmHeight + marginY*/);
+    ShowCaret(hWnd);
+}
+
+/***********************************************************************
+ *
+ *           NOTEPAD_OnKillFocus
+ */
+static void NOTEPAD_OnKillFocus(HWND hWnd, HWND recvFocusWnd)
+{
+    HideCaret(hWnd);
+    DestroyCaret();
+}
+
+/***********************************************************************
+ *
  *           NOTEPAD_OnSize
  */
-static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
+static void NOTEPAD_OnSize(HWND hWnd, uint State, int W, int H)
 {
     SCROLLINFO scroll_info;
 
@@ -367,7 +384,6 @@ static void NOTEPAD_OnClose(HWND hWnd)
  */
 static void NOTEPAD_OnDestroy(HWND hWnd)
 {
-    DestroyCaret();
     PostQuitMessage(0);
 }
 
@@ -403,6 +419,8 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
 {
     switch (msg) {
         HANDLE_MSG(hWnd, WM_CREATE, NOTEPAD_OnCreate);
+        HANDLE_MSG(hWnd, WM_SETFOCUS, NOTEPAD_OnSetFocus);
+        HANDLE_MSG(hWnd, WM_KILLFOCUS, NOTEPAD_OnKillFocus);
         HANDLE_MSG(hWnd, WM_SIZE, NOTEPAD_OnSize);
         HANDLE_MSG(hWnd, WM_PAINT, NOTEPAD_OnPaint);
         HANDLE_MSG(hWnd, WM_VSCROLL, NOTEPAD_OnVScroll);
