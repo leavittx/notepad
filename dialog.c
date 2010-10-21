@@ -196,16 +196,19 @@ void DoOpenFile(const char *FileName)
     }
     EDIT_CountOffsets();
 
-    // Debug
+#ifdef DEBUG
     for (TextItem *a = Globals.TextList.first; ; a = a->next) {
         fputs(a->str.data, stdout);
         fputc('\n', stdout);
         if (a == Globals.TextList.last)
             break;
     }
+#endif
 
     SetFileName(FileName);
     UpdateWindowCaption();
+
+    SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
 }
 
 void DIALOG_FileNew(void)
@@ -310,4 +313,5 @@ void DIALOG_EditWrap(void)
     Globals.isWrapLongLines = !Globals.isWrapLongLines;
     CheckMenuItem(GetMenu(Globals.hMainWnd), CMD_WRAP,
         MF_BYCOMMAND | (Globals.isWrapLongLines ? MF_CHECKED : MF_UNCHECKED));
+    SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
 }

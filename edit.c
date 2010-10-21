@@ -40,9 +40,6 @@ void EDIT_AddTextItem(FILE *f, int len)
     fread(cur->str.data, 1, len, f);
     cur->str.data[len] = '\0';
     cur->str.len = len;
-
-    // Debug
-    //fputs(cur->str.data, stdout);
 }
 
 void EDIT_CountOffsets(void)
@@ -96,7 +93,7 @@ void EDIT_CountOffsets(void)
             break;
     }
 
-    // Debug
+#ifdef DEBUG
     int i = 0;
     for (TextItem *a = Globals.TextList.first; ; a = a->next) {
         printf("line %i: %i offsets -- ", i++, a->noffsets);
@@ -106,4 +103,5 @@ void EDIT_CountOffsets(void)
         if (a == Globals.TextList.last)
             break;
     }
+#endif
 }

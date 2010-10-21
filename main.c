@@ -96,8 +96,11 @@ static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
     scroll_info.fMask = SIF_PAGE | SIF_RANGE;
     scroll_info.nMin = 0;
     scroll_info.nMax = Globals.TextList.nDrawLines - 1;
+
+    printf("scroll max: %i\n",  scroll_info.nMax);
+
     scroll_info.nPage = H / Globals.CharH;
-    SetScrollInfo(hWnd, SB_VERT, &scroll_info, TRUE);
+    SetScrollInfo(hWnd, SB_VERT, &scroll_info, true);
 
     // Horizontal scroll
     scroll_info.cbSize = sizeof(scroll_info);
@@ -106,9 +109,12 @@ static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
     if (Globals.isWrapLongLines)
         scroll_info.nMax = W / Globals.CharW;
     else
-        scroll_info.nMax = Globals.TextList.LongestStringLength + 1;
-    scroll_info.nPage = W / Globals.CharW + 1;
-    SetScrollInfo(hWnd, SB_HORZ, &scroll_info, TRUE);
+        scroll_info.nMax = Globals.TextList.LongestStringLength;
+
+    printf("scroll max: %i\n",  scroll_info.nMax);
+
+    scroll_info.nPage = W / Globals.CharW; //+1
+    SetScrollInfo(hWnd, SB_HORZ, &scroll_info, true);
 
     InvalidateRect(hWnd, NULL, false);
 }
@@ -121,8 +127,7 @@ static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
  */
 void NOTEPAD_OnMenuCommand(HWND hwnd, int Id, HWND hwndCtl, uint codeNotify)
 {
-    switch (Id)
-    {
+    switch (Id) {
         case CMD_NEW:     DIALOG_FileNew(); break;
         case CMD_OPEN:    DIALOG_FileOpen(); break;
         case CMD_SAVE:    DIALOG_FileSave(); break;
@@ -160,12 +165,19 @@ static void NOTEPAD_OnPaint(HWND hWnd)
     RECT rc;
     SCROLLINFO scroll_info;
     int vert_pos, horiz_pos, paint_beg, paint_end;
-    int noffset = 0, maxlen = Globals.W / Globals.CharW;;
+    int noffset = 0,
+        maxlen = Globals.W / Globals.CharW,
+        drawlen, drawoffset, drawremain;
     int x = 0, y = 0;
     int i;
 
+    GetClientRect(hWnd, &rc);
+    hDC = BeginPaint(hWnd, &ps);
+    FillRect(hDC, &rc, GetStockObject(WHITE_BRUSH));
+
     // TODO
     if (Globals.FileName[0] == '\0') {
+        EndPaint(hWnd, &ps);
         return;
     }
 
@@ -177,11 +189,13 @@ static void NOTEPAD_OnPaint(HWND hWnd)
     GetScrollInfo(hWnd, SB_HORZ, &scroll_info);
     horiz_pos = scroll_info.nPos;
 
-    paint_beg = max(0, 0/*vert_pos + ps.rcPaint.top / Globals.CharH*/);
+    printf("scroll: %i %i\n", vert_pos, horiz_pos);
+
+    paint_beg = max(0, vert_pos + ps.rcPaint.top / Globals.CharH);
     paint_end = min(Globals.TextList.nDrawLines - 1,
                     vert_pos + ps.rcPaint.bottom / Globals.CharH);
 
-    printf("%i %i\n", paint_beg, paint_end);
+    printf("paint: %i %i\n", paint_beg, paint_end);
 
     TextItem *a;
     for (a = Globals.TextList.first;
@@ -192,6 +206,7 @@ static void NOTEPAD_OnPaint(HWND hWnd)
             noffset = paint_beg - a->drawnums[0];
         }
         else {
+            EndPaint(hWnd, &ps);
             return;
         }
     }
@@ -202,20 +217,27 @@ static void NOTEPAD_OnPaint(HWND hWnd)
         }
     }
 
-    GetClientRect(hWnd, &rc);
-    hDC = BeginPaint(hWnd, &ps);
-    FillRect(hDC, &rc, GetStockObject(WHITE_BRUSH));
     SelectObject(hDC, GetStockObject(SYSTEM_FIXED_FONT));
 
-    for (i = paint_beg; i <= paint_end; i++)
-    {
+    for (i = paint_beg; i <= paint_end; i++) {
         x = Globals.CharW * (0 - horiz_pos);
         y = Globals.CharH * (i - vert_pos);
-        TextOutA(hDC, x, y,
-                 a->str.data + noffset * maxlen,
-                 (a->str.len - noffset * maxlen) >= maxlen ?
-                     maxlen :
-                     (a->str.len - noffset * maxlen) % maxlen);
+
+        printf("x = %i, y = %i\n", x, y);
+
+        drawoffset = noffset * maxlen;
+        if (Globals.isWrapLongLines) {
+            drawremain = a->str.len - drawoffset;
+            drawlen = drawremain >= maxlen ? maxlen : drawremain;
+            /*
+            drawlen = (a->str.len - noffset * maxlen) >= maxlen ?
+                maxlen : (a->str.len - noffset * maxlen) % maxlen;
+            */
+        }
+        else {
+            drawlen = a->str.len;
+        }
+        TextOut(hDC, x, y, a->str.data + drawoffset, drawlen);
         noffset++;
         if (noffset >= a->noffsets) {
             if (a == Globals.TextList.last)
@@ -234,7 +256,50 @@ static void NOTEPAD_OnPaint(HWND hWnd)
  */
 static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
 {
+    SCROLLINFO scroll_info;
+    int vert_pos;
 
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask = SIF_ALL;
+    GetScrollInfo(hWnd, SB_VERT, &scroll_info);
+
+    vert_pos = scroll_info.nPos;
+
+    switch (Code) {
+        case SB_TOP:
+            scroll_info.nPos = scroll_info.nMin;
+            break ;
+        case SB_BOTTOM:
+            scroll_info.nPos = scroll_info.nMax;
+            break ;
+        case SB_LINEUP:
+            scroll_info.nPos--;
+            break;
+        case SB_LINEDOWN:
+            scroll_info.nPos++;
+            break;
+        case SB_PAGEUP:
+            scroll_info.nPos -= scroll_info.nPage;
+            break;
+        case SB_PAGEDOWN:
+            scroll_info.nPos += scroll_info.nPage;
+            break;
+        case SB_THUMBTRACK:
+            scroll_info.nPos = scroll_info.nTrackPos;
+            break;
+    }
+
+    scroll_info.fMask = SIF_POS;
+    SetScrollInfo(hWnd, SB_VERT, &scroll_info, true);
+
+    GetScrollInfo(hWnd, SB_VERT, &scroll_info);
+    if (scroll_info.nPos != vert_pos) {
+        ScrollWindow(hWnd, 0,
+                     Globals.CharH * (vert_pos - scroll_info.nPos),
+                     NULL, NULL);
+
+        UpdateWindow(hWnd);
+    }
 }
 
 /***********************************************************************
@@ -243,7 +308,43 @@ static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
  */
 static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
 {
+    SCROLLINFO scroll_info;
+    int horiz_pos;
 
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask  = SIF_ALL;
+    GetScrollInfo (hWnd, SB_HORZ, &scroll_info);
+
+    horiz_pos = scroll_info.nPos;
+
+    switch (Code) {
+        case SB_LINELEFT:
+            scroll_info.nPos--;
+            break ;
+        case SB_LINERIGHT:
+            scroll_info.nPos++;
+            break ;
+        case SB_PAGELEFT:
+            scroll_info.nPos -= scroll_info.nPage;
+            break ;
+        case SB_PAGERIGHT:
+            scroll_info.nPos += scroll_info.nPage;
+            break ;
+        case SB_THUMBPOSITION:
+            scroll_info.nPos = scroll_info.nTrackPos;
+            break ;
+    }
+
+    scroll_info.fMask = SIF_POS;
+    SetScrollInfo(hWnd, SB_HORZ, &scroll_info, true);
+
+    GetScrollInfo (hWnd, SB_HORZ, &scroll_info);
+    if (scroll_info.nPos != horiz_pos) {
+        ScrollWindow(hWnd,
+                     Globals.CharW * (horiz_pos - scroll_info.nPos), 0,
+                     NULL, NULL);
+        UpdateWindow(hWnd);
+    }
 }
 
 /***********************************************************************
@@ -285,7 +386,6 @@ static void NOTEPAD_OnDestroy(HWND hWnd)
 
     PostQuitMessage(0);
 }
-
 
 /***********************************************************************
  * Data Initialization
