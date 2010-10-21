@@ -92,13 +92,10 @@ bool FileExists(const char *Filename)
     FILE *f;
 
     f = fopen(Filename, "rt");
-    if (f == NULL) {
+    if (f == NULL)
         return false;
-    }
-    else {
-        fclose(f);
-        return true;
-    }
+    fclose(f);
+    return true;
 }
 
 typedef enum {
@@ -138,10 +135,10 @@ bool DoCloseFile(void)
         }
     }
 
+    EDIT_ClearTextList();
     SetFileName(empty_str);
-
     UpdateWindowCaption();
-    return(true);
+    return true;
 }
 
 void DoOpenFile(const char *FileName)
@@ -160,6 +157,8 @@ void DoOpenFile(const char *FileName)
         return;
     }
 
+    // TODO -- let user know that file is
+    //         too big/needs some time to be loaded
     //fseek(f, 0, SEEK_END);
     //size = ftell(f);
     //if (size > MAX_FILE_SIZE)
@@ -172,7 +171,18 @@ void DoOpenFile(const char *FileName)
         if (c == '\n') {
             fseek(f, -curstrlen-1, SEEK_CUR);
             EDIT_AddTextItem(f, curstrlen);
-            fgetc(f); // Read '\n'
+            fgetc(f); // Skip '\n'
+            if (curstrlen > Globals.TextList.LongestStringLength)
+                Globals.TextList.LongestStringLength = curstrlen;
+            curstrlen = 0;
+        }
+        // Windows-like \r\n line ending
+        // TODO -- add some extra check; binary files handling??
+        else if (c == '\r') {
+            fseek(f, -curstrlen-1, SEEK_CUR);
+            EDIT_AddTextItem(f, curstrlen);
+            fgetc(f); // Skip '\r'
+            fgetc(f); // Skip '\n'
             if (curstrlen > Globals.TextList.LongestStringLength)
                 Globals.TextList.LongestStringLength = curstrlen;
             curstrlen = 0;
@@ -184,13 +194,13 @@ void DoOpenFile(const char *FileName)
                 Globals.TextList.LongestStringLength = curstrlen;
             break;
         }
-        else {
+        else
             curstrlen++;
-        }
     }
 
     for (TextItem *a = Globals.TextList.first; ; a = a->next) {
         a->noffsets = 0;
+        a->drawnums = a->offsets = NULL;
         if (a == Globals.TextList.last)
             break;
     }
@@ -217,8 +227,11 @@ void DIALOG_FileNew(void)
 
     /* Close any files and prompt to save changes */
     if (DoCloseFile()) {
+        EDIT_ClearTextList();
         SetWindowText(Globals.hMainWnd, empty_str);
         UpdateWindowCaption();
+        // Clear window
+        InvalidateRect(Globals.hMainWnd, NULL, false);
     }
 }
 

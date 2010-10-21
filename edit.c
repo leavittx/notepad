@@ -14,7 +14,7 @@ void EDIT_AddTextItem(FILE *f, int len)
 
     if (*first == NULL) {
         if ((*first = malloc(sizeof(TextItem))) == NULL) {
-            // Show some error message
+            // TODO -- show some error message
             ExitProcess(1);
         }
         (*first)->prev = (*first)->next = NULL;
@@ -23,7 +23,7 @@ void EDIT_AddTextItem(FILE *f, int len)
     else {
         cur = *last;
         if ((cur->next = malloc(sizeof(TextItem))) == NULL) {
-            // Show some error message
+            // TODO -- show some error message
             ExitProcess(1);
         }
         cur = cur->next;
@@ -33,7 +33,7 @@ void EDIT_AddTextItem(FILE *f, int len)
     }
 
     if ((cur->str.data = malloc(len + 1)) == NULL) {
-        // Show some error message
+        // TODO -- show some error message
         ExitProcess(1);
     }
 
@@ -50,16 +50,16 @@ void EDIT_CountOffsets(void)
     if (!Globals.isWrapLongLines) {
         int i = 0;
         for (TextItem *a = Globals.TextList.first; ; a = a->next, i++) {
-            if (a->noffsets >= 1) {
-                //free(a->offsets);
-                //malloc()
-            }
-            else {
-                a->drawnums = malloc(sizeof(int));
-                a->offsets = malloc(sizeof(int));
-                a->offsets[0] = 0;
-            }
+            if (a->drawnums != NULL)
+                free(a->drawnums);
+            if (a->offsets != NULL)
+                free(a->offsets);
+
+            a->drawnums = malloc(sizeof(int));
+            a->offsets = malloc(sizeof(int));
+
             a->drawnums[0] = i;
+            a->offsets[0] = 0;
             a->noffsets = 1;
             Globals.TextList.nDrawLines++;
 
@@ -74,19 +74,20 @@ void EDIT_CountOffsets(void)
     int drawnum = 0;
     for (TextItem *a = Globals.TextList.first; ; a = a->next) {
         int noffsets = a->str.len / maxlen + 1;
-        if (noffsets > a->noffsets) {
-            if (a->drawnums != NULL)
-                free(a->drawnums);
-            a->drawnums = malloc(noffsets * sizeof(int));
-            if (a->offsets != NULL)
-                free(a->offsets);
-            a->offsets = malloc(noffsets * sizeof(int));
-        }
-        a->noffsets = noffsets;
+
+        if (a->drawnums != NULL)
+            free(a->drawnums);
+        if (a->offsets != NULL)
+            free(a->offsets);
+
+        a->drawnums = malloc(noffsets * sizeof(int));
+        a->offsets = malloc(noffsets * sizeof(int));
+
         for (int i = 0; i < noffsets; i++) {
             a->drawnums[i] = drawnum++;
             a->offsets[i] = i * maxlen;
         }
+        a->noffsets = noffsets;
         Globals.TextList.nDrawLines += noffsets;
 
         if (a == Globals.TextList.last)
@@ -104,4 +105,27 @@ void EDIT_CountOffsets(void)
             break;
     }
 #endif
+}
+
+void EDIT_ClearTextList(void)
+{
+    if (Globals.TextList.first == NULL)
+        return;
+
+    for (TextItem *a = Globals.TextList.first, *b; ; a = b) {
+        if (a != Globals.TextList.last)
+            b = a->next;
+        else
+            b = NULL;
+        // Free all allocated memory
+        free(a->str.data);
+        free(a->drawnums);
+        free(a->offsets);
+        free(a);
+        // Break on the last element
+        if (b == NULL)
+            break;
+    }
+    // The list is clear now
+    Globals.TextList.first = NULL;
 }

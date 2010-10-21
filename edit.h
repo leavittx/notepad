@@ -28,5 +28,6 @@ typedef struct {
 
 void EDIT_AddTextItem(FILE *f, int len);
 void EDIT_CountOffsets(void);
+void EDIT_ClearTextList(void);
 
 #endif // EDIT_H

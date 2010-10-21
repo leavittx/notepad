@@ -69,7 +69,6 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
     ShowCaret(hWnd);
 
     ReleaseDC(hWnd, hDC);
-
     return true;
 }
 
@@ -84,10 +83,8 @@ static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
     Globals.W = W;
     Globals.H = H;
 
-    if (Globals.FileName[0] == '\0' ||
-            W == 0 || H == 0) {
+    if (Globals.FileName[0] == '\0' || W == 0 || H == 0)
         return;
-    }
 
     EDIT_CountOffsets();
 
@@ -96,9 +93,6 @@ static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
     scroll_info.fMask = SIF_PAGE | SIF_RANGE;
     scroll_info.nMin = 0;
     scroll_info.nMax = Globals.TextList.nDrawLines - 1;
-
-    printf("scroll max: %i\n",  scroll_info.nMax);
-
     scroll_info.nPage = H / Globals.CharH;
     SetScrollInfo(hWnd, SB_VERT, &scroll_info, true);
 
@@ -110,48 +104,10 @@ static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
         scroll_info.nMax = W / Globals.CharW;
     else
         scroll_info.nMax = Globals.TextList.LongestStringLength;
-
-    printf("scroll max: %i\n",  scroll_info.nMax);
-
-    scroll_info.nPage = W / Globals.CharW; //+1
+    scroll_info.nPage = W / Globals.CharW + 1;
     SetScrollInfo(hWnd, SB_HORZ, &scroll_info, true);
 
     InvalidateRect(hWnd, NULL, false);
-}
-
-/***********************************************************************
- *
- *           NOTEPAD_OnMenuCommand
- *
- *  All handling of main menu events
- */
-void NOTEPAD_OnMenuCommand(HWND hwnd, int Id, HWND hwndCtl, uint codeNotify)
-{
-    switch (Id) {
-        case CMD_NEW:     DIALOG_FileNew(); break;
-        case CMD_OPEN:    DIALOG_FileOpen(); break;
-        case CMD_SAVE:    DIALOG_FileSave(); break;
-        case CMD_SAVE_AS: DIALOG_FileSaveAs(); break;
-        case CMD_EXIT:    DIALOG_FileExit(); break;
-
-        case CMD_WRAP:    DIALOG_EditWrap(); break;
-
-        default:          break;
-    }
-}
-
-/***********************************************************************
- *
- *           NOTEPAD_OnDropFiles
- */
-static void NOTEPAD_OnDropFiles(HWND hWnd, HDROP hDrop)
-{
-    char FileName[MAX_PATH];
-    //HANDLE hDrop = (HANDLE)wParam;
-
-    DragQueryFile(hDrop, 0, FileName, ARRAY_SIZE(FileName));
-    DragFinish(hDrop);
-    DoOpenFile(FileName);
 }
 
 /***********************************************************************
@@ -169,13 +125,12 @@ static void NOTEPAD_OnPaint(HWND hWnd)
         maxlen = Globals.W / Globals.CharW,
         drawlen, drawoffset, drawremain;
     int x = 0, y = 0;
-    int i;
 
     GetClientRect(hWnd, &rc);
     hDC = BeginPaint(hWnd, &ps);
     FillRect(hDC, &rc, GetStockObject(WHITE_BRUSH));
 
-    // TODO
+    // TODO -- clear window??
     if (Globals.FileName[0] == '\0') {
         EndPaint(hWnd, &ps);
         return;
@@ -185,26 +140,25 @@ static void NOTEPAD_OnPaint(HWND hWnd)
     scroll_info.fMask  = SIF_POS;
     GetScrollInfo(hWnd, SB_VERT, &scroll_info);
     vert_pos = scroll_info.nPos;
-
     GetScrollInfo(hWnd, SB_HORZ, &scroll_info);
     horiz_pos = scroll_info.nPos;
-
-    printf("scroll: %i %i\n", vert_pos, horiz_pos);
 
     paint_beg = max(0, vert_pos + ps.rcPaint.top / Globals.CharH);
     paint_end = min(Globals.TextList.nDrawLines - 1,
                     vert_pos + ps.rcPaint.bottom / Globals.CharH);
 
+#ifdef DEBUG
     printf("paint: %i %i\n", paint_beg, paint_end);
+#endif
 
     TextItem *a;
     for (a = Globals.TextList.first;
          a->drawnums[0] < paint_beg && a != Globals.TextList.last;
          a = a->next);
+
     if (a == Globals.TextList.last) {
-        if (a->drawnums[0] + a->noffsets - 1 >= paint_beg) { // -1: Not count first offset
+        if (a->drawnums[0] + a->noffsets - 1 >= paint_beg) // -1: Not count first offset
             noffset = paint_beg - a->drawnums[0];
-        }
         else {
             EndPaint(hWnd, &ps);
             return;
@@ -219,11 +173,9 @@ static void NOTEPAD_OnPaint(HWND hWnd)
 
     SelectObject(hDC, GetStockObject(SYSTEM_FIXED_FONT));
 
-    for (i = paint_beg; i <= paint_end; i++) {
+    for (int i = paint_beg; i <= paint_end; i++) {
         x = Globals.CharW * (0 - horiz_pos);
         y = Globals.CharH * (i - vert_pos);
-
-        printf("x = %i, y = %i\n", x, y);
 
         drawoffset = noffset * maxlen;
         if (Globals.isWrapLongLines) {
@@ -234,10 +186,11 @@ static void NOTEPAD_OnPaint(HWND hWnd)
                 maxlen : (a->str.len - noffset * maxlen) % maxlen;
             */
         }
-        else {
+        else
             drawlen = a->str.len;
-        }
+
         TextOut(hDC, x, y, a->str.data + drawoffset, drawlen);
+
         noffset++;
         if (noffset >= a->noffsets) {
             if (a == Globals.TextList.last)
@@ -294,10 +247,9 @@ static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
 
     GetScrollInfo(hWnd, SB_VERT, &scroll_info);
     if (scroll_info.nPos != vert_pos) {
-        ScrollWindow(hWnd, 0,
-                     Globals.CharH * (vert_pos - scroll_info.nPos),
+        ScrollWindow(hWnd,
+                     0, Globals.CharH * (vert_pos - scroll_info.nPos),
                      NULL, NULL);
-
         UpdateWindow(hWnd);
     }
 }
@@ -309,13 +261,13 @@ static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
 static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
 {
     SCROLLINFO scroll_info;
-    int horiz_pos;
+    int horz_pos;
 
     scroll_info.cbSize = sizeof(scroll_info);
     scroll_info.fMask  = SIF_ALL;
     GetScrollInfo (hWnd, SB_HORZ, &scroll_info);
 
-    horiz_pos = scroll_info.nPos;
+    horz_pos = scroll_info.nPos;
 
     switch (Code) {
         case SB_LINELEFT:
@@ -339,9 +291,9 @@ static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
     SetScrollInfo(hWnd, SB_HORZ, &scroll_info, true);
 
     GetScrollInfo (hWnd, SB_HORZ, &scroll_info);
-    if (scroll_info.nPos != horiz_pos) {
+    if (scroll_info.nPos != horz_pos) {
         ScrollWindow(hWnd,
-                     Globals.CharW * (horiz_pos - scroll_info.nPos), 0,
+                     Globals.CharW * (horz_pos - scroll_info.nPos), 0,
                      NULL, NULL);
         UpdateWindow(hWnd);
     }
@@ -367,13 +319,45 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint Vkey, bool Down, int Repeat, uint 
 
 /***********************************************************************
  *
+ *           NOTEPAD_OnMenuCommand
+ *
+ *  All handling of main menu events
+ */
+void NOTEPAD_OnMenuCommand(HWND hwnd, int Id, HWND hwndCtl, uint codeNotify)
+{
+    switch (Id) {
+        case CMD_NEW:     DIALOG_FileNew(); break;
+        case CMD_OPEN:    DIALOG_FileOpen(); break;
+        case CMD_SAVE:    DIALOG_FileSave(); break;
+        case CMD_SAVE_AS: DIALOG_FileSaveAs(); break;
+        case CMD_EXIT:    DIALOG_FileExit(); break;
+        case CMD_WRAP:    DIALOG_EditWrap(); break;
+        default:          break;
+    }
+}
+
+/***********************************************************************
+ *
+ *           NOTEPAD_OnDropFiles
+ */
+static void NOTEPAD_OnDropFiles(HWND hWnd, HDROP hDrop)
+{
+    char FileName[MAX_PATH];
+    //HANDLE hDrop = (HANDLE)wParam;
+
+    DragQueryFile(hDrop, 0, FileName, ARRAY_SIZE(FileName));
+    DragFinish(hDrop);
+    DoOpenFile(FileName);
+}
+
+/***********************************************************************
+ *
  *           NOTEPAD_OnClose
  */
 static void NOTEPAD_OnClose(HWND hWnd)
 {
-    if (DoCloseFile()) {
+    if (DoCloseFile())
         DestroyWindow(hWnd);
-    }
 }
 
 /***********************************************************************
@@ -383,7 +367,6 @@ static void NOTEPAD_OnClose(HWND hWnd)
 static void NOTEPAD_OnDestroy(HWND hWnd)
 {
     DestroyCaret();
-
     PostQuitMessage(0);
 }
 
@@ -417,22 +400,18 @@ static void NOTEPAD_InitData(void)
 static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
                                LPARAM lParam)
 {
-    switch (msg)
-    {
+    switch (msg) {
         HANDLE_MSG(hWnd, WM_CREATE, NOTEPAD_OnCreate);
         HANDLE_MSG(hWnd, WM_SIZE, NOTEPAD_OnSize);
-        HANDLE_MSG(hWnd, WM_COMMAND, NOTEPAD_OnMenuCommand);
-        HANDLE_MSG(hWnd, WM_DROPFILES, NOTEPAD_OnDropFiles);
-
         HANDLE_MSG(hWnd, WM_PAINT, NOTEPAD_OnPaint);
         HANDLE_MSG(hWnd, WM_VSCROLL, NOTEPAD_OnVScroll);
         HANDLE_MSG(hWnd, WM_HSCROLL, NOTEPAD_OnHScroll);
         HANDLE_MSG(hWnd, WM_KEYDOWN, NOTEPAD_OnKeyDown);
         HANDLE_MSG(hWnd, WM_CHAR, NOTEPAD_OnChar);
-
+        HANDLE_MSG(hWnd, WM_COMMAND, NOTEPAD_OnMenuCommand);
+        HANDLE_MSG(hWnd, WM_DROPFILES, NOTEPAD_OnDropFiles);
         HANDLE_MSG(hWnd, WM_CLOSE, NOTEPAD_OnClose);
         HANDLE_MSG(hWnd, WM_DESTROY, NOTEPAD_OnDestroy);
-
         default:
             return DefWindowProc(hWnd, msg, wParam, lParam);
     }
@@ -462,18 +441,14 @@ static int AlertFileDoesNotExist(const char *FileName)
 
 static void HandleCommandLine(char *cmdline)
 {
-    if (*cmdline)
-    {
+    if (*cmdline) {
         /* file name is passed in the command line */
-        if (FileExists(cmdline))
-        {
+        if (FileExists(cmdline)) {
             DoOpenFile(cmdline);
             InvalidateRect(Globals.hMainWnd, NULL, false);
         }
-        else
-        {
-            switch (AlertFileDoesNotExist(cmdline))
-            {
+        else {
+            switch (AlertFileDoesNotExist(cmdline)) {
                 case IDYES:
                     SetFileName(cmdline);
                     UpdateWindowCaption();
@@ -519,10 +494,10 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
     wc.lpszMenuName  = MAKEINTRESOURCE(MAIN_MENU);
     wc.lpszClassName = className;
 
-    if (!RegisterClassEx(&wc)) return false;
+    if (!RegisterClassEx(&wc))
+        return false;
 
     /* Setup windows */
-
     monitor = MonitorFromRect(&main_rect, MONITOR_DEFAULTTOPRIMARY);
     info.cbSize = sizeof(info);
     GetMonitorInfo(monitor, &info);
@@ -548,15 +523,12 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
 
     NOTEPAD_InitData();
     DIALOG_FileNew();
-
     ShowWindow(Globals.hMainWnd, show);
     UpdateWindow(Globals.hMainWnd);
     DragAcceptFiles(Globals.hMainWnd, true);
-
     HandleCommandLine(cmdline);
 
-    while (GetMessage(&msg, 0, 0, 0))
-    {
+    while (GetMessage(&msg, 0, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
