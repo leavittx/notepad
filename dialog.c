@@ -221,7 +221,6 @@ void DoOpenFile(const char *FileName)
     }
 
     for (TextItem *a = Globals.TextList.first; ; a = a->next) {
-        a->noffsets = 0;
         a->drawnums = a->offsets = NULL;
         if (a == Globals.TextList.last)
             break;
@@ -240,6 +239,12 @@ void DoOpenFile(const char *FileName)
     SetFileName(FileName);
     UpdateWindowCaption();
 
+    // Reset scroll position
+    SetScrollPos(Globals.hMainWnd, SB_VERT, 0, true);
+    SetScrollPos(Globals.hMainWnd, SB_HORZ, 0, true);
+    // Reset caret position
+    SetCaretPos(0, 0);
+    // Redraw window
     SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
 }
 
