@@ -112,7 +112,6 @@ typedef enum {
 static SAVE_STATUS DoSaveFile(const char *FileName)
 {
     FILE *outFile;
-    char EOL = '\n';
 
     if ((outFile = fopen(FileName, "wb")) == NULL)
         return SAVE_FAILED;
@@ -126,7 +125,10 @@ static SAVE_STATUS DoSaveFile(const char *FileName)
         fwrite(a->str.data, sizeof(char), a->str.len, outFile);
         if (a == Globals.TextList.last)
             break;
-        fputc(EOL, outFile);
+        // Write proper line break
+        if (Globals.EOL_type == EOL_CRLF)
+            fputc(CR, outFile);
+        fputc(LF, outFile);
     }
 
     return SAVED_OK;
@@ -186,21 +188,23 @@ void DoOpenFile(const char *FileName)
     Globals.TextList.LongestStringLength = 0;
     while (1) {
         int c = fgetc(inFile);
-        if (c == '\n') {
-            fseek(inFile, -curstrlen-1, SEEK_CUR);
+        if (c == LF) {
+            Globals.EOL_type = EOL_LF;
+            fseek(inFile, -curstrlen - 1, SEEK_CUR);
             EDIT_AddTextItem(inFile, curstrlen);
-            fgetc(inFile); // Skip '\n'
+            fgetc(inFile); // Skip LF
             if (curstrlen > Globals.TextList.LongestStringLength)
                 Globals.TextList.LongestStringLength = curstrlen;
             curstrlen = 0;
         }
-        // Windows-like \r\n line ending
+        // Windows-like CRLF line ending
         // TODO -- add some extra check; binary files handling??
-        else if (c == '\r') {
-            fseek(inFile, -curstrlen-1, SEEK_CUR);
+        else if (c == CR) {
+            Globals.EOL_type = EOL_CRLF;
+            fseek(inFile, -curstrlen - 1, SEEK_CUR);
             EDIT_AddTextItem(inFile, curstrlen);
-            fgetc(inFile); // Skip '\r'
-            fgetc(inFile); // Skip '\n'
+            fgetc(inFile); // Skip CR
+            fgetc(inFile); // Skip LF
             if (curstrlen > Globals.TextList.LongestStringLength)
                 Globals.TextList.LongestStringLength = curstrlen;
             curstrlen = 0;
@@ -227,7 +231,7 @@ void DoOpenFile(const char *FileName)
 #ifdef DEBUG
     for (TextItem *a = Globals.TextList.first; ; a = a->next) {
         fputs(a->str.data, stdout);
-        fputc('\n', stdout);
+        fputc(LF, stdout);
         if (a == Globals.TextList.last)
             break;
     }

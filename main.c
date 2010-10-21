@@ -46,6 +46,7 @@ static void NOTEPAD_SetParams(void)
     Globals.H = dy;
 
     Globals.isWrapLongLines = true;
+    Globals.EOL_type = EOL_LF;
 }
 
 /***********************************************************************

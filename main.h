@@ -12,6 +12,14 @@ typedef unsigned int uint;
 
 #define MAX_STRING_LEN 255
 
+#define LF '\n'
+#define CR '\r'
+
+typedef enum {
+    EOL_LF,
+    EOL_CRLF
+} EOL_TYPE;
+
 typedef struct {
     HANDLE hInstance;
     HWND   hMainWnd;
@@ -20,6 +28,7 @@ typedef struct {
     char   FileName[MAX_PATH];
     char   FileTitle[MAX_PATH];
     char   Filter[MAX_STRING_LEN];
+    EOL_TYPE EOL_type;
     Text   TextList;
     int    CharW, CharH;
 } NOTEPAD_GLOBALS;
