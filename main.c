@@ -84,7 +84,7 @@ static void NOTEPAD_OnSize(HWND hWnd, UINT State, INT W, INT H)
     Globals.W = W;
     Globals.H = H;
 
-    if (Globals.FileName[0] == '\0' || W == 0 || H == 0)
+    if (W == 0 || H == 0)
         return;
 
     EDIT_CountOffsets();

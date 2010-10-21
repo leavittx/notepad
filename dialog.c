@@ -257,8 +257,8 @@ void DIALOG_FileNew(void)
         EDIT_ClearTextList();
         SetWindowText(Globals.hMainWnd, empty_str);
         UpdateWindowCaption();
-        // Clear window
-        InvalidateRect(Globals.hMainWnd, NULL, false);
+        // Redraw window
+        SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
     }
 }
 
@@ -348,5 +348,6 @@ void DIALOG_EditWrap(void)
     Globals.isWrapLongLines = !Globals.isWrapLongLines;
     CheckMenuItem(GetMenu(Globals.hMainWnd), CMD_WRAP,
         MF_BYCOMMAND | (Globals.isWrapLongLines ? MF_CHECKED : MF_UNCHECKED));
+    // Redraw window
     SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
 }

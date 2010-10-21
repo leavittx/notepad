@@ -46,6 +46,9 @@ void EDIT_CountOffsets(void)
 {
     Globals.TextList.nDrawLines = 0;
 
+    if (Globals.TextList.first == NULL)
+        return;
+
     // Wrap mode disabled
     if (!Globals.isWrapLongLines) {
         int i = 0;
