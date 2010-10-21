@@ -1,0 +1,17 @@
+1. Icon
+2. Caret navigation with keyboard (with accelerators):
+                       LINE UP,DOWN,LEFT,RIGHT;
+                       PgUp,PgDown;
+                       Home,End;
+                       Ctrl+Home,Ctrl+End;
+                       Ctrl+o,Ctrl+s,Ctrl+x,...;
+                       MouseWheel,MouseClick
+   Caret linked to position in text (on resize stay in the same place)
+3. Editing:
+                       Character inserting (lower and upper case);
+                       Enter;
+                       Delete,Backspace;
+                       Space
+4. Word wrap (?)
+5. Handle '// TODO'
+6. Remember upper line while resizing (?)
