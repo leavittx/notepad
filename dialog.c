@@ -89,19 +89,18 @@ static int AlertFileNotSaved(const char *FileName)
  */
 bool FileExists(const char *Filename)
 {
-    FILE *f;
+    FILE *File;
 
-    f = fopen(Filename, "rt");
-    if (f == NULL)
+    File = fopen(Filename, "rb");
+    if (File == NULL)
         return false;
-    fclose(f);
+    fclose(File);
     return true;
 }
 
 typedef enum {
     SAVED_OK,
-    SAVE_FAILED,
-    SHOW_SAVEAS_DIALOG
+    SAVE_FAILED
 } SAVE_STATUS;
 
 /* FileName is the filename to save under.
@@ -109,8 +108,27 @@ typedef enum {
  * If the function succeeds, it returns SAVED_OK.
  * If the function fails, it returns SAVE_FAILED.
  */
+// TODO -- save test.txt (rus) under different name and diff
 static SAVE_STATUS DoSaveFile(const char *FileName)
 {
+    FILE *outFile;
+    char EOL = '\n';
+
+    if ((outFile = fopen(FileName, "wb")) == NULL)
+        return SAVE_FAILED;
+
+    if (Globals.TextList.first == NULL) {
+        fclose(outFile);
+        return SAVED_OK;
+    }
+
+    for (TextItem *a = Globals.TextList.first; ; a = a->next) {
+        fwrite(a->str.data, sizeof(char), a->str.len, outFile);
+        if (a == Globals.TextList.last)
+            break;
+        fputc(EOL, outFile);
+    }
+
     return SAVED_OK;
 }
 
@@ -130,8 +148,8 @@ bool DoCloseFile(void)
         switch (Result) {
             case IDYES:     return DIALOG_FileSave();
             case IDNO:      break;
-            case IDCANCEL:  return(false);
-            default:        return(false);
+            case IDCANCEL:  return false;
+            default:        return false;
         }
     }
 
@@ -143,7 +161,7 @@ bool DoCloseFile(void)
 
 void DoOpenFile(const char *FileName)
 {
-    FILE *f;
+    FILE *inFile;
     //int size;
     int curstrlen = 0;
 
@@ -151,27 +169,27 @@ void DoOpenFile(const char *FileName)
     if (!DoCloseFile())
         return;
 
-    f = fopen(FileName, "rb");
-    if (f == NULL) {
+    inFile = fopen(FileName, "rb");
+    if (inFile == NULL) {
         AlertFileNotFound(FileName);
         return;
     }
 
     // TODO -- let user know that file is
     //         too big/needs some time to be loaded
-    //fseek(f, 0, SEEK_END);
-    //size = ftell(f);
+    //fseek(inFile, 0, SEEK_END);
+    //size = ftell(inFile);
     //if (size > MAX_FILE_SIZE)
         //AlertFileTooBig();
-    //rewind(f);
+    //rewind(inFile);
 
     Globals.TextList.LongestStringLength = 0;
     while (1) {
-        int c = fgetc(f);
+        int c = fgetc(inFile);
         if (c == '\n') {
-            fseek(f, -curstrlen-1, SEEK_CUR);
-            EDIT_AddTextItem(f, curstrlen);
-            fgetc(f); // Skip '\n'
+            fseek(inFile, -curstrlen-1, SEEK_CUR);
+            EDIT_AddTextItem(inFile, curstrlen);
+            fgetc(inFile); // Skip '\n'
             if (curstrlen > Globals.TextList.LongestStringLength)
                 Globals.TextList.LongestStringLength = curstrlen;
             curstrlen = 0;
@@ -179,17 +197,17 @@ void DoOpenFile(const char *FileName)
         // Windows-like \r\n line ending
         // TODO -- add some extra check; binary files handling??
         else if (c == '\r') {
-            fseek(f, -curstrlen-1, SEEK_CUR);
-            EDIT_AddTextItem(f, curstrlen);
-            fgetc(f); // Skip '\r'
-            fgetc(f); // Skip '\n'
+            fseek(inFile, -curstrlen-1, SEEK_CUR);
+            EDIT_AddTextItem(inFile, curstrlen);
+            fgetc(inFile); // Skip '\r'
+            fgetc(inFile); // Skip '\n'
             if (curstrlen > Globals.TextList.LongestStringLength)
                 Globals.TextList.LongestStringLength = curstrlen;
             curstrlen = 0;
         }
         else if (c == EOF) {
-            fseek(f, -curstrlen, SEEK_CUR);
-            EDIT_AddTextItem(f, curstrlen);
+            fseek(inFile, -curstrlen, SEEK_CUR);
+            EDIT_AddTextItem(inFile, curstrlen);
             if (curstrlen > Globals.TextList.LongestStringLength)
                 Globals.TextList.LongestStringLength = curstrlen;
             break;
@@ -269,9 +287,8 @@ bool DIALOG_FileSave(void)
     {
         switch (DoSaveFile(Globals.FileName))
         {
-            case SAVED_OK:           return true;
-            case SHOW_SAVEAS_DIALOG: return DIALOG_FileSaveAs();
-            default:                 return false;
+            case SAVED_OK:  return true;
+            default:        return false;
         }
     }
 }
@@ -297,7 +314,6 @@ bool DIALOG_FileSaveAs(void)
                    OFN_HIDEREADONLY | OFN_ENABLESIZING;
     saveas.lpstrDefExt       = DefaultExt;
 
-retry:
     if (!GetSaveFileName(&saveas))
         return false;
 
@@ -307,9 +323,6 @@ retry:
             SetFileName(Path);
             UpdateWindowCaption();
             return true;
-
-        case SHOW_SAVEAS_DIALOG:
-            goto retry;
 
         default:
             return false;
