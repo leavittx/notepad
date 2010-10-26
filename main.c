@@ -4,8 +4,8 @@
 
 #include <windows.h>
 #include <windowsx.h>
-#include <shlwapi.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "main.h"
 #include "dialog.h"
@@ -66,6 +66,32 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
     Globals.CharH = text_metric.tmHeight + text_metric.tmExternalLeading;
 
     ReleaseDC(hWnd, hDC);
+/*
+    // Make some control elements darker (not works on win)
+    int aElements[] = { COLOR_MENU, COLOR_MENUTEXT,
+                        COLOR_SCROLLBAR, COLOR_WINDOW };
+    DWORD aNewColors[ARRAY_SIZE(aElements)];
+    aNewColors[0] = RGB(0, 0, 0);
+    aNewColors[1] = RGB(128, 128, 128);
+    aNewColors[2] = RGB(0, 0, 0);
+    aNewColors[3] = RGB(254, 254, 254);
+    SetSysColors(ARRAY_SIZE(aElements), aElements, aNewColors);
+*/
+/*
+    // LSD
+    int aElements[31];
+    DWORD aNewColors[ARRAY_SIZE(aElements)];
+    while (1) {
+        srand(time(0));
+        for (int i = 0; i < ARRAY_SIZE(aElements); i++) {
+            aElements[i] = i;
+            aNewColors[i] = RGB(rand()%255, rand()%255, rand()%255);
+        }
+        SetSysColors(ARRAY_SIZE(aElements), aElements, aNewColors);
+        Sleep(50);
+    }
+    ExitProcess(0);
+*/
     return true;
 }
 
@@ -76,7 +102,8 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
 static void NOTEPAD_OnSetFocus(HWND hWnd, HWND lostFocusWnd)
 {
     CreateCaret(hWnd, NULL, 0, Globals.CharH);
-    SetCaretPos(0, 0/*marginX + caretXpos * tm.tmAveCharWidth, caretYpos * tm.tmHeight + marginY*/);
+    //SetCaretPos(marginX + caretXpos * tm.tmAveCharWidth, caretYpos * tm.tmHeight + marginY);
+    SendMessage(Globals.hMainWnd, WM_KEYDOWN, 0, 0); // Restore caret position
     ShowCaret(hWnd);
 }
 
@@ -125,6 +152,10 @@ static void NOTEPAD_OnSize(HWND hWnd, uint State, int W, int H)
     scroll_info.nPage = W / Globals.CharW + 1;
     SetScrollInfo(hWnd, SB_HORZ, &scroll_info, true);
 
+    // Fix caret position
+    EDIT_FixCaret();
+    SendMessage(Globals.hMainWnd, WM_KEYDOWN, 0, 0);
+
     InvalidateRect(hWnd, NULL, false);
 }
 
@@ -146,7 +177,7 @@ static void NOTEPAD_OnPaint(HWND hWnd)
 
     GetClientRect(hWnd, &rc);
     hDC = BeginPaint(hWnd, &ps);
-    FillRect(hDC, &rc, GetStockObject(WHITE_BRUSH));
+    FillRect(hDC, &rc, GetStockObject(BLACK_BRUSH));
 
     // TODO -- clear window??
     if (Globals.FileName[0] == '\0') {
@@ -190,6 +221,10 @@ static void NOTEPAD_OnPaint(HWND hWnd)
     }
 
     SelectObject(hDC, GetStockObject(SYSTEM_FIXED_FONT));
+    SetTextColor(hDC, RGB(0, 255, 0));
+    //SetTextColor(hDC, RGB(128, 128, 128));
+    //SetTextColor(hDC, RGB(0xff, 0x84, 0x0)); // Orange
+    SetBkColor(hDC, RGB(0, 0, 0));
 
     for (int i = paint_beg; i <= paint_end; i++) {
         x = Globals.CharW * (0 - horiz_pos);
@@ -319,18 +354,80 @@ static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
 
 /***********************************************************************
  *
- *           NOTEPAD_OnChar
+ *           NOTEPAD_OnKeyDown
  */
-void NOTEPAD_OnChar(HWND hWnd, char Ch, int cRepeat)
+static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint flags)
 {
+    SCROLLINFO vert_scroll_info, horz_vert_info;
 
+    // Get vertical scroll info
+    vert_scroll_info.cbSize = sizeof(vert_scroll_info);
+    vert_scroll_info.fMask  = SIF_ALL;
+    GetScrollInfo(hWnd, SB_VERT, &vert_scroll_info);
+    // Get horizontal scroll info
+    horz_vert_info.cbSize = sizeof(horz_vert_info);
+    horz_vert_info.fMask  = SIF_ALL;
+    GetScrollInfo(hWnd, SB_HORZ, &horz_vert_info);
+
+    switch (VKey)
+    {
+        case VK_UP:
+            EDIT_MoveCaret(DIR_UP);
+            break;
+
+        case VK_DOWN:
+            EDIT_MoveCaret(DIR_DOWN);
+            break;
+
+        case VK_RIGHT:
+            EDIT_MoveCaret(DIR_RIGHT);
+            break;
+
+        case VK_LEFT:
+            EDIT_MoveCaret(DIR_LEFT);
+            break;
+
+        case VK_NEXT: // Page Down
+            SendMessage(hWnd, WM_VSCROLL, SB_PAGEDOWN, 0);
+            return;
+
+        case VK_PRIOR: // Page Up
+            SendMessage(hWnd, WM_VSCROLL, SB_PAGEUP, 0);
+            return;
+
+        case VK_ESCAPE:
+            SendMessage(hWnd, WM_CLOSE, 0, 0);
+            break;
+
+        case VK_DELETE:
+            //MoveCaret(&(WSt->Document), CD_RIGHT);
+            //Backspace(&(WSt->Document), (WSt->W / WSt->CharWidth) - 10);
+            //MoveCaret(&(WSt->Document), CD_LEFT);
+            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(WSt->W, WSt->H));
+            break;
+    }
+
+    /* Vertical scroll and caret */
+    if (Globals.CaretCurLine >= vert_scroll_info.nPos + vert_scroll_info.nPage - 1)
+        SendMessage(hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
+    if (Globals.CaretCurLine > 0 && Globals.CaretCurLine <= vert_scroll_info.nPos)
+        SendMessage(hWnd, WM_VSCROLL, SB_LINEUP, 0);
+
+    /* Horizontal scroll and caret */
+    if (Globals.CaretCurPos >= horz_vert_info.nPos + vert_scroll_info.nPage)
+        SendMessage(hWnd, WM_HSCROLL, SB_LINEDOWN, 0);
+    if (Globals.CaretCurPos > 0 && Globals.CaretCurPos <= horz_vert_info.nPos)
+        SendMessage(hWnd, WM_HSCROLL, SB_LINEUP, 0);
+
+    SetCaretPos((Globals.CaretCurPos - horz_vert_info.nPos) * Globals.CharW,
+                (Globals.CaretCurLine - vert_scroll_info.nPos) * Globals.CharH);
 }
 
 /***********************************************************************
  *
- *           NOTEPAD_OnKeyDown
+ *           NOTEPAD_OnChar
  */
-static void NOTEPAD_OnKeyDown(HWND hWnd, uint Vkey, bool Down, int Repeat, uint flags )
+void NOTEPAD_OnChar(HWND hWnd, char Ch, int cRepeat)
 {
 
 }
@@ -455,7 +552,7 @@ static int AlertFileDoesNotExist(const char *FileName)
    Result = MessageBox(Globals.hMainWnd, Message, Resource,
                          MB_ICONEXCLAMATION | MB_YESNOCANCEL);
 
-   return(Result);
+   return Result;
 }
 
 static void HandleCommandLine(char *cmdline)
@@ -509,7 +606,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
     wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
     wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
     wc.hCursor       = LoadCursor(0, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hbrBackground = (HBRUSH)BLACK_BRUSH;//(HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszMenuName  = MAKEINTRESOURCE(MAIN_MENU);
     wc.lpszClassName = className;
 
@@ -542,7 +639,8 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
 
     NOTEPAD_InitData();
     DIALOG_FileNew();
-    ShowWindow(Globals.hMainWnd, show);
+    //ShowWindow(Globals.hMainWnd, SW_HIDE);
+    ShowWindow(Globals.hMainWnd, SW_SHOW);
     UpdateWindow(Globals.hMainWnd);
     DragAcceptFiles(Globals.hMainWnd, true);
     HandleCommandLine(cmdline);

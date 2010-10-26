@@ -31,6 +31,8 @@ typedef struct {
     EOL_TYPE EOL_type;
     Text   TextList;
     int    CharW, CharH;
+    int    CaretAbsLine, CaretAbsPos;
+    int    CaretCurLine, CaretCurPos;
 } NOTEPAD_GLOBALS;
 
 extern NOTEPAD_GLOBALS Globals;

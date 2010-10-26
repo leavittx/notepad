@@ -1,5 +1,5 @@
-1. Icon
-2. Caret navigation with keyboard (with accelerators):
+1. Icon (?)
+2. Caret navigation with keyboard (with accelerators (?)):
                        LINE UP,DOWN,LEFT,RIGHT;
                        PgUp,PgDown;
                        Home,End;
@@ -15,3 +15,5 @@
 4. Word wrap (?)
 5. Handle '// TODO'
 6. Remember upper line while resizing (?)
+7. Comments on global functions, variables and structures
+8. Handle tabs (\t characters)

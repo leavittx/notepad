@@ -53,9 +53,9 @@ void EDIT_CountOffsets(void)
     if (!Globals.isWrapLongLines) {
         int i = 0;
         for (TextItem *a = Globals.TextList.first; ; a = a->next, i++) {
-            if (a->drawnums != NULL)
+            //if (a->drawnums != NULL)
                 free(a->drawnums);
-            if (a->offsets != NULL)
+            //if (a->offsets != NULL)
                 free(a->offsets);
 
             a->drawnums = malloc(sizeof(int));
@@ -78,9 +78,9 @@ void EDIT_CountOffsets(void)
     for (TextItem *a = Globals.TextList.first; ; a = a->next) {
         int noffsets = a->str.len / maxlen + 1;
 
-        if (a->drawnums != NULL)
+        //if (a->drawnums != NULL)
             free(a->drawnums);
-        if (a->offsets != NULL)
+        //if (a->offsets != NULL)
             free(a->offsets);
 
         a->drawnums = malloc(noffsets * sizeof(int));
@@ -131,4 +131,182 @@ void EDIT_ClearTextList(void)
     }
     // The list is clear now
     Globals.TextList.first = NULL;
+}
+
+void EDIT_MoveCaret(DIR dir)
+{
+    TextItem *a, *prev;
+    int noffset;
+    int maxlen = Globals.W / Globals.CharW;
+
+    if (Globals.TextList.first == NULL)
+        return;
+
+    // Find current and previous string (where caret is)
+    for (a = Globals.TextList.first;
+         a->drawnums[0] < Globals.CaretCurLine; a = a->next) {
+            if (a == Globals.TextList.last)
+                break;
+    }
+    if (a == Globals.TextList.last) {
+        if (a->drawnums[a->noffsets - 1] < Globals.CaretCurLine) // Should not happen
+            return;
+    }
+    else {
+        if (a->drawnums[0] != Globals.CaretCurLine)
+            a = a->prev;
+    }
+    if (a != Globals.TextList.first) {
+        prev = a->prev;
+    }
+
+    // Count current offset (for caret)
+    if (Globals.isWrapLongLines)
+        noffset = Globals.CaretAbsPos / maxlen;
+    else
+        noffset = 0;
+
+    // Handle different caret move directions
+    switch (dir)
+    {
+    case DIR_UP:
+        if (Globals.CaretCurLine > 0)
+        {
+            Globals.CaretCurLine--;
+
+            if (noffset == 0) {
+                if (Globals.CaretAbsLine > 0) {
+                    Globals.CaretAbsLine--;
+                    if (Globals.CaretCurPos > prev->str.len - maxlen * (prev->noffsets - 1))
+                        Globals.CaretCurPos = prev->str.len - maxlen * (prev->noffsets - 1);
+                    Globals.CaretAbsPos = maxlen * (prev->noffsets - 1) + Globals.CaretCurPos;
+                }
+            }
+            else {
+                Globals.CaretAbsPos -= maxlen;
+            }
+        }
+        break;
+
+    case DIR_DOWN:
+        if (Globals.CaretCurLine < Globals.TextList.nDrawLines - 1)
+        {
+            Globals.CaretCurLine++;
+
+            if (noffset == a->noffsets - 1) {
+                //if (Globals.CaretAbsLine > 0) {
+                    Globals.CaretAbsLine++;
+                    if (a->next->noffsets == 1)
+                        if (Globals.CaretCurPos > a->next->str.len)
+                            Globals.CaretCurPos = a->next->str.len;
+                    Globals.CaretAbsPos = Globals.CaretCurPos;
+                //}
+            }
+            else {
+                if (Globals.CaretCurPos + maxlen <= a->str.len)
+                    Globals.CaretAbsPos += maxlen;
+                else {
+                    Globals.CaretAbsPos = a->str.len;
+                    Globals.CaretCurPos = a->str.len - maxlen * (a->noffsets - 1);
+                }
+            }
+        }
+        break;
+
+    case DIR_RIGHT:
+        if (noffset == a->noffsets - 1) {
+            if (Globals.CaretAbsPos >= a->str.len) {
+                Globals.CaretAbsLine++;
+                Globals.CaretCurLine++;
+                Globals.CaretAbsPos = 0;
+                Globals.CaretCurPos = 0;
+            }
+            else {
+                Globals.CaretAbsPos++;
+                Globals.CaretCurPos++;
+            }
+        }
+        else {
+            if (Globals.CaretCurPos >= maxlen - 1) { // Behave like original notepad
+                Globals.CaretCurLine++;
+                Globals.CaretAbsPos++;
+                Globals.CaretCurPos = 0;
+            }
+            else {
+                Globals.CaretAbsPos++;
+                Globals.CaretCurPos++;
+            }
+        }
+
+        break;
+
+    case DIR_LEFT:
+        if (noffset == 0) {
+            if (Globals.CaretCurPos <= 0) { // CaretCurPos = CaretAbsPos in this case
+                if (Globals.CaretAbsLine > 0) {
+                    Globals.CaretAbsLine--;
+                    Globals.CaretCurLine--;
+                    Globals.CaretAbsPos = prev->str.len;
+                    Globals.CaretCurPos = prev->str.len - maxlen * (prev->noffsets - 1);
+                }
+            }
+            else {
+                Globals.CaretAbsPos--;
+                Globals.CaretCurPos--;
+            }
+        }
+        else {
+            if (Globals.CaretCurPos <= 0) {
+                Globals.CaretCurLine--;
+                Globals.CaretAbsPos--;
+                Globals.CaretCurPos = maxlen - 1;
+            }
+            else {
+                Globals.CaretAbsPos--;
+                Globals.CaretCurPos--;
+            }
+        }
+        break;
+    }
+#ifdef DEBUG
+    printf("%5s curline: %i, curpos: %i, absline: %i, abspos: %i\n",
+           dir == DIR_DOWN  ? "DOWN" :
+           dir == DIR_LEFT  ? "LEFT" :
+           dir == DIR_RIGHT ? "RIGHT": "UP",
+           Globals.CaretCurLine,
+           Globals.CaretCurPos,
+           Globals.CaretAbsLine,
+           Globals.CaretAbsPos);
+#endif
+}
+
+void EDIT_FixCaret(void)
+{
+    TextItem *a;
+    int noffset;
+    int maxlen = Globals.W / Globals.CharW;
+    int i = 0;
+
+    if (Globals.TextList.first == NULL)
+        return;
+
+    // Find where caret is
+    for (a = Globals.TextList.first;
+         i < Globals.CaretAbsLine; a = a->next, i++) {
+            if (a == Globals.TextList.last)
+                break;
+    }
+    if (a == Globals.TextList.last) {
+        if (i != Globals.CaretAbsLine) // Should not happen
+            return;
+    }
+
+    // Count current offset (for caret)
+    if (Globals.isWrapLongLines)
+        noffset = Globals.CaretAbsPos / maxlen;
+    else
+        noffset = 0;
+
+    Globals.CaretCurLine = a->drawnums[noffset];
+    Globals.CaretCurPos = Globals.CaretAbsPos - maxlen * noffset;
 }

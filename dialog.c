@@ -98,6 +98,18 @@ bool FileExists(const char *Filename)
     return true;
 }
 
+void ResetScrollAndCaret(void)
+{
+    // Reset scroll position
+    SetScrollPos(Globals.hMainWnd, SB_VERT, 0, true);
+    SetScrollPos(Globals.hMainWnd, SB_HORZ, 0, true);
+    // Reset caret position
+    Globals.CaretAbsLine = 0;
+    Globals.CaretAbsPos  = 0;
+    Globals.CaretCurLine = 0;
+    Globals.CaretCurPos  = 0;
+}
+
 typedef enum {
     SAVED_OK,
     SAVE_FAILED
@@ -236,12 +248,12 @@ void DoOpenFile(const char *FileName)
     }
 #endif
 
+    // Update window caption
     SetFileName(FileName);
     UpdateWindowCaption();
-
-    // Reset scroll position
-    SetScrollPos(Globals.hMainWnd, SB_VERT, 0, true);
-    SetScrollPos(Globals.hMainWnd, SB_HORZ, 0, true);
+    // Reset scroll and caret position
+    ResetScrollAndCaret();
+    SendMessage(Globals.hMainWnd, WM_KEYDOWN, 0, 0);
     // Redraw window
     SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
 }
@@ -252,9 +264,14 @@ void DIALOG_FileNew(void)
 
     /* Close any files and prompt to save changes */
     if (DoCloseFile()) {
+        // Remove current text list from memory (if exists)
         EDIT_ClearTextList();
+        // Reset window caption
         SetWindowText(Globals.hMainWnd, empty_str);
         UpdateWindowCaption();
+        // Reset scroll and caret position
+        ResetScrollAndCaret();
+        SendMessage(Globals.hMainWnd, WM_KEYDOWN, 0, 0);
         // Redraw window
         SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
     }

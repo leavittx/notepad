@@ -26,8 +26,18 @@ typedef struct {
   int LongestStringLength;
 } Text;
 
+typedef enum {
+    DIR_UP,
+    DIR_DOWN,
+    DIR_RIGHT,
+    DIR_LEFT
+} DIR;
+
 void EDIT_AddTextItem(FILE *f, int len);
 void EDIT_CountOffsets(void);
 void EDIT_ClearTextList(void);
+
+void EDIT_MoveCaret(DIR dir);
+void EDIT_FixCaret(void);
 
 #endif // EDIT_H
