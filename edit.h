@@ -30,7 +30,11 @@ typedef enum {
     DIR_UP,
     DIR_DOWN,
     DIR_RIGHT,
-    DIR_LEFT
+    DIR_LEFT,
+    DIR_HOME,
+    DIR_END,
+    DIR_NEXT,
+    DIR_PRIOR
 } DIR;
 
 void EDIT_AddTextItem(FILE *f, int len);

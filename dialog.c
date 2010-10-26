@@ -120,7 +120,7 @@ typedef enum {
  * If the function succeeds, it returns SAVED_OK.
  * If the function fails, it returns SAVE_FAILED.
  */
-// TODO -- save test.txt (rus) under different name and diff
+// TODO (done) -- save test.txt (rus) under different name and diff
 static SAVE_STATUS DoSaveFile(const char *FileName)
 {
     FILE *outFile;

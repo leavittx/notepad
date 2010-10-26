@@ -138,6 +138,8 @@ void EDIT_MoveCaret(DIR dir)
     TextItem *a, *prev;
     int noffset;
     int maxlen = Globals.W / Globals.CharW;
+    int pageH = Globals.H / Globals.CharH + 1;
+    int i, j;
 
     if (Globals.TextList.first == NULL)
         return;
@@ -216,10 +218,12 @@ void EDIT_MoveCaret(DIR dir)
     case DIR_RIGHT:
         if (noffset == a->noffsets - 1) {
             if (Globals.CaretAbsPos >= a->str.len) {
-                Globals.CaretAbsLine++;
-                Globals.CaretCurLine++;
-                Globals.CaretAbsPos = 0;
-                Globals.CaretCurPos = 0;
+                if (Globals.CaretCurLine < Globals.TextList.nDrawLines - 1) {
+                    Globals.CaretAbsLine++;
+                    Globals.CaretCurLine++;
+                    Globals.CaretAbsPos = 0;
+                    Globals.CaretCurPos = 0;
+                }
             }
             else {
                 Globals.CaretAbsPos++;
@@ -267,7 +271,60 @@ void EDIT_MoveCaret(DIR dir)
             }
         }
         break;
+
+    case DIR_HOME:
+        Globals.CaretCurLine = a->drawnums[0];
+        Globals.CaretAbsPos = 0;
+        Globals.CaretCurPos = 0;
+        break;
+
+    case DIR_END:
+        Globals.CaretCurLine = a->drawnums[a->noffsets - 1];
+        Globals.CaretAbsPos = a->str.len;
+        Globals.CaretCurPos = a->str.len - maxlen * (a->noffsets - 1);
+        break;
+
+    case DIR_NEXT:
+        for (i = 0; i != pageH; ) {
+            if (i == 0)
+                for (j = noffset; i != pageH && j < a->noffsets; j++)
+                    i++;
+            else
+                for (j = 0; i != pageH && j < a->noffsets; j++)
+                    i++;
+            if (a == Globals.TextList.last || i == pageH)
+                break;
+            a = a->next;
+            Globals.CaretAbsLine++;
+        }
+        j--;
+        Globals.CaretCurLine = a->drawnums[j];
+        if (Globals.CaretCurPos > a->str.len - maxlen * j)
+            Globals.CaretCurPos = a->str.len - maxlen * j;
+        Globals.CaretAbsPos = Globals.CaretCurPos + maxlen * j;
+        break;
+
+    case DIR_PRIOR:
+        for (i = 0; i != pageH; ) {
+            if (i == 0)
+                for (j = noffset; i != pageH && j >= 0; j--)
+                    i++;
+            else
+                for (j = a->noffsets - 1; i != pageH && j >= 0; j--)
+                    i++;
+            if (a == Globals.TextList.first || i == pageH)
+                break;
+            a = a->prev;
+            Globals.CaretAbsLine--;
+        }
+        j++;
+        Globals.CaretCurLine = a->drawnums[j];
+        if (Globals.CaretCurPos > a->str.len - maxlen * j)
+            Globals.CaretCurPos = a->str.len - maxlen * j;
+        Globals.CaretAbsPos = Globals.CaretCurPos + maxlen * j;
+        break;
     }
+
 #ifdef DEBUG
     printf("%5s curline: %i, curpos: %i, absline: %i, abspos: %i\n",
            dir == DIR_DOWN  ? "DOWN" :

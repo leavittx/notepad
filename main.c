@@ -66,6 +66,7 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
     Globals.CharH = text_metric.tmHeight + text_metric.tmExternalLeading;
 
     ReleaseDC(hWnd, hDC);
+
 /*
     // Make some control elements darker (not works on win)
     int aElements[] = { COLOR_MENU, COLOR_MENUTEXT,
@@ -92,6 +93,7 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
     }
     ExitProcess(0);
 */
+
     return true;
 }
 
@@ -256,6 +258,79 @@ static void NOTEPAD_OnPaint(HWND hWnd)
     EndPaint(hWnd, &ps);
 }
 
+static void UpdateStuff(bool isFixScroll)
+{
+    SCROLLINFO vert_scroll_info, horz_scroll_info;
+
+    if (isFixScroll) {
+        // Get vertical scroll info
+        vert_scroll_info.cbSize = sizeof(vert_scroll_info);
+        vert_scroll_info.fMask  = SIF_ALL;
+        GetScrollInfo(Globals.hMainWnd, SB_VERT, &vert_scroll_info);
+        // Get horizontal scroll info
+        horz_scroll_info.cbSize = sizeof(horz_scroll_info);
+        horz_scroll_info.fMask  = SIF_ALL;
+        GetScrollInfo(Globals.hMainWnd, SB_HORZ, &horz_scroll_info);
+        /* Vertical scroll and caret */
+        //if (Globals.CaretCurLine >= vert_scroll_info.nPos + vert_scroll_info.nPage - 1)
+        //    SendMessage(hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
+        //if (Globals.CaretCurLine > 0 && Globals.CaretCurLine <= vert_scroll_info.nPos)
+        //    SendMessage(hWnd, WM_VSCROLL, SB_LINEUP, 0);
+        /* Horizontal scroll and caret */
+        //if (Globals.CaretCurPos >= horz_scroll_info.nPos + vert_scroll_info.nPage)
+        //    SendMessage(hWnd, WM_HSCROLL, SB_LINEDOWN, 0);
+        //if (Globals.CaretCurPos > 0 && Globals.CaretCurPos <= horz_scroll_info.nPos)
+        //    SendMessage(hWnd, WM_HSCROLL, SB_LINEUP, 0);
+
+        //SendMessage(hWnd, WM_VSCROLL, SB_THUMBTRACK, MAKELONG(0, MAKEWORD(0, 222)));
+
+        if (Globals.CaretCurLine == vert_scroll_info.nPos + vert_scroll_info.nPage) {
+            SendMessage(Globals.hMainWnd, WM_VSCROLL, SB_LINEDOWN, 0);
+        }
+        else if (Globals.CaretCurLine > vert_scroll_info.nPos + vert_scroll_info.nPage) {
+            int vert_pos = vert_scroll_info.nPos;
+
+            vert_scroll_info.nPos = Globals.CaretCurLine - vert_scroll_info.nPage + 1;
+
+            vert_scroll_info.fMask = SIF_POS;
+            SetScrollInfo(Globals.hMainWnd, SB_VERT, &vert_scroll_info, true);
+
+            ScrollWindow(Globals.hMainWnd,
+                         0, Globals.CharH * (vert_pos - vert_scroll_info.nPos),
+                         NULL, NULL);
+            UpdateWindow(Globals.hMainWnd);
+        }
+        else if (Globals.CaretCurLine == vert_scroll_info.nPos - 1) {
+            SendMessage(Globals.hMainWnd, WM_VSCROLL, SB_LINEUP, 0);
+        }
+        else if (Globals.CaretCurLine < vert_scroll_info.nPos) {
+            int vert_pos = vert_scroll_info.nPos;
+
+            vert_scroll_info.nPos = Globals.CaretCurLine;
+
+            vert_scroll_info.fMask = SIF_POS;
+            SetScrollInfo(Globals.hMainWnd, SB_VERT, &vert_scroll_info, true);
+
+            ScrollWindow(Globals.hMainWnd,
+                         0, Globals.CharH * (vert_pos - vert_scroll_info.nPos),
+                         NULL, NULL);
+            UpdateWindow(Globals.hMainWnd);
+        }
+    }
+
+    // Get vertical scroll info
+    vert_scroll_info.cbSize = sizeof(vert_scroll_info);
+    vert_scroll_info.fMask  = SIF_ALL;
+    GetScrollInfo(Globals.hMainWnd, SB_VERT, &vert_scroll_info);
+    // Get horizontal scroll info
+    horz_scroll_info.cbSize = sizeof(horz_scroll_info);
+    horz_scroll_info.fMask  = SIF_ALL;
+    GetScrollInfo(Globals.hMainWnd, SB_HORZ, &horz_scroll_info);
+
+    SetCaretPos((Globals.CaretCurPos - horz_scroll_info.nPos) * Globals.CharW,
+                (Globals.CaretCurLine - vert_scroll_info.nPos) * Globals.CharH);
+}
+
 /***********************************************************************
  *
  *           NOTEPAD_OnVScroll
@@ -274,23 +349,33 @@ static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
     switch (Code) {
         case SB_TOP:
             scroll_info.nPos = scroll_info.nMin;
-            break ;
+            break;
+
         case SB_BOTTOM:
             scroll_info.nPos = scroll_info.nMax;
-            break ;
+            break;
+
         case SB_LINEUP:
             scroll_info.nPos--;
             break;
+
         case SB_LINEDOWN:
             scroll_info.nPos++;
             break;
+
         case SB_PAGEUP:
             scroll_info.nPos -= scroll_info.nPage;
             break;
+
         case SB_PAGEDOWN:
             scroll_info.nPos += scroll_info.nPage;
             break;
+
         case SB_THUMBTRACK:
+            scroll_info.nPos = scroll_info.nTrackPos;
+            break;
+
+        case SB_THUMBPOSITION:
             scroll_info.nPos = scroll_info.nTrackPos;
             break;
     }
@@ -304,6 +389,8 @@ static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
                      0, Globals.CharH * (vert_pos - scroll_info.nPos),
                      NULL, NULL);
         UpdateWindow(hWnd);
+
+        UpdateStuff(false);
     }
 }
 
@@ -325,19 +412,27 @@ static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
     switch (Code) {
         case SB_LINELEFT:
             scroll_info.nPos--;
-            break ;
+            break;
+
         case SB_LINERIGHT:
             scroll_info.nPos++;
-            break ;
+            break;
+
         case SB_PAGELEFT:
             scroll_info.nPos -= scroll_info.nPage;
-            break ;
+            break;
+
         case SB_PAGERIGHT:
             scroll_info.nPos += scroll_info.nPage;
-            break ;
+            break;
+
+        case SB_THUMBTRACK:
+            scroll_info.nPos = scroll_info.nTrackPos;
+            break;
+
         case SB_THUMBPOSITION:
             scroll_info.nPos = scroll_info.nTrackPos;
-            break ;
+            break;
     }
 
     scroll_info.fMask = SIF_POS;
@@ -349,6 +444,8 @@ static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
                      Globals.CharW * (horz_pos - scroll_info.nPos), 0,
                      NULL, NULL);
         UpdateWindow(hWnd);
+
+        UpdateStuff(false);
     }
 }
 
@@ -358,19 +455,7 @@ static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
  */
 static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint flags)
 {
-    SCROLLINFO vert_scroll_info, horz_vert_info;
-
-    // Get vertical scroll info
-    vert_scroll_info.cbSize = sizeof(vert_scroll_info);
-    vert_scroll_info.fMask  = SIF_ALL;
-    GetScrollInfo(hWnd, SB_VERT, &vert_scroll_info);
-    // Get horizontal scroll info
-    horz_vert_info.cbSize = sizeof(horz_vert_info);
-    horz_vert_info.fMask  = SIF_ALL;
-    GetScrollInfo(hWnd, SB_HORZ, &horz_vert_info);
-
-    switch (VKey)
-    {
+    switch (VKey) {
         case VK_UP:
             EDIT_MoveCaret(DIR_UP);
             break;
@@ -388,12 +473,20 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             break;
 
         case VK_NEXT: // Page Down
-            SendMessage(hWnd, WM_VSCROLL, SB_PAGEDOWN, 0);
-            return;
+            EDIT_MoveCaret(DIR_NEXT);
+            break;
 
         case VK_PRIOR: // Page Up
-            SendMessage(hWnd, WM_VSCROLL, SB_PAGEUP, 0);
-            return;
+            EDIT_MoveCaret(DIR_PRIOR);
+            break;
+
+        case VK_HOME:
+            EDIT_MoveCaret(DIR_HOME);
+            break;
+
+        case VK_END:
+            EDIT_MoveCaret(DIR_END);
+            break;
 
         case VK_ESCAPE:
             SendMessage(hWnd, WM_CLOSE, 0, 0);
@@ -407,20 +500,7 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             break;
     }
 
-    /* Vertical scroll and caret */
-    if (Globals.CaretCurLine >= vert_scroll_info.nPos + vert_scroll_info.nPage - 1)
-        SendMessage(hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
-    if (Globals.CaretCurLine > 0 && Globals.CaretCurLine <= vert_scroll_info.nPos)
-        SendMessage(hWnd, WM_VSCROLL, SB_LINEUP, 0);
-
-    /* Horizontal scroll and caret */
-    if (Globals.CaretCurPos >= horz_vert_info.nPos + vert_scroll_info.nPage)
-        SendMessage(hWnd, WM_HSCROLL, SB_LINEDOWN, 0);
-    if (Globals.CaretCurPos > 0 && Globals.CaretCurPos <= horz_vert_info.nPos)
-        SendMessage(hWnd, WM_HSCROLL, SB_LINEUP, 0);
-
-    SetCaretPos((Globals.CaretCurPos - horz_vert_info.nPos) * Globals.CharW,
-                (Globals.CaretCurLine - vert_scroll_info.nPos) * Globals.CharH);
+    UpdateStuff(true);
 }
 
 /***********************************************************************

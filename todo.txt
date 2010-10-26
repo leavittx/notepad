@@ -1,19 +1,20 @@
-1. Icon (?)
-2. Caret navigation with keyboard (with accelerators (?)):
-                       LINE UP,DOWN,LEFT,RIGHT;
-                       PgUp,PgDown;
-                       Home,End;
-                       Ctrl+Home,Ctrl+End;
-                       Ctrl+o,Ctrl+s,Ctrl+x,...;
-                       MouseWheel,MouseClick
-   Caret linked to position in text (on resize stay in the same place)
-3. Editing:
-                       Character inserting (lower and upper case);
-                       Enter;
-                       Delete,Backspace;
-                       Space
-4. Word wrap (?)
-5. Handle '// TODO'
-6. Remember upper line while resizing (?)
-7. Comments on global functions, variables and structures
-8. Handle tabs (\t characters)
+- Caret navigation with keyboard (with accelerators):
++                       LINE UP,DOWN,LEFT,RIGHT;
++                       PgUp,PgDown;
++                       Home,End;
+-                       Ctrl+Home,Ctrl+End;
+-                       Ctrl+o,Ctrl+s,Ctrl+x,...;
+-                       MouseWheel,MouseClick
++ Caret linked to position in text (on resize stay in the same place)
+- Fix vertical scroll when caret navigation
+- Editing:
+-                       Character inserting (lower and upper case, space);
+-                       Enter;
+-                       Delete,Backspace
+? Word wrap
+? Handle '// TODO'
+? Remember upper line while resizing
+- Comments on global functions, variables and structures
+? Handle tabs (\t characters)
+- Bug with last line shit!
+? Icon
