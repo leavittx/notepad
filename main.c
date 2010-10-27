@@ -510,7 +510,6 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             InvalidateRect(hWnd, NULL, false);
             break;
     }
-
     UpdateStuff(true);
 }
 
@@ -549,12 +548,23 @@ void NOTEPAD_OnChar(HWND hWnd, char Ch, int cRepeat)
 void NOTEPAD_OnMenuCommand(HWND hwnd, int Id, HWND hwndCtl, uint codeNotify)
 {
     switch (Id) {
-        case CMD_NEW:     DIALOG_FileNew(); break;
-        case CMD_OPEN:    DIALOG_FileOpen(); break;
-        case CMD_SAVE:    DIALOG_FileSave(); break;
+        case CMD_NEW:     DIALOG_FileNew();    break;
+        case CMD_OPEN:    DIALOG_FileOpen();   break;
+        case CMD_SAVE:    DIALOG_FileSave();   break;
         case CMD_SAVE_AS: DIALOG_FileSaveAs(); break;
-        case CMD_EXIT:    DIALOG_FileExit(); break;
-        case CMD_WRAP:    DIALOG_EditWrap(); break;
+        case CMD_EXIT:    DIALOG_FileExit();   break;
+        case CMD_WRAP:    DIALOG_EditWrap();   break;
+
+        case CMD_TEXT_HOME:
+            EDIT_MoveCaret(DIR_TEXT_HOME);
+            UpdateStuff(true);
+            break;
+
+        case CMD_TEXT_END:
+            EDIT_MoveCaret(DIR_TEXT_END);
+            UpdateStuff(true);
+            break;
+
         default:          break;
     }
 }

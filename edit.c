@@ -305,14 +305,14 @@ void EDIT_MoveCaret(DIR dir)
 
     case DIR_HOME:
         Globals.CaretCurLine = a->drawnums[0];
-        Globals.CaretAbsPos = 0;
-        Globals.CaretCurPos = 0;
+        Globals.CaretAbsPos  = 0;
+        Globals.CaretCurPos  = 0;
         break;
 
     case DIR_END:
         Globals.CaretCurLine = a->drawnums[a->noffsets - 1];
-        Globals.CaretAbsPos = a->str.len;
-        Globals.CaretCurPos = a->str.len - maxlen * (a->noffsets - 1);
+        Globals.CaretAbsPos  = a->str.len;
+        Globals.CaretCurPos  = a->str.len - maxlen * (a->noffsets - 1);
         break;
 
     case DIR_NEXT:
@@ -354,13 +354,36 @@ void EDIT_MoveCaret(DIR dir)
             Globals.CaretCurPos = a->str.len - maxlen * j;
         Globals.CaretAbsPos = Globals.CaretCurPos + maxlen * j;
         break;
+
+    case DIR_TEXT_HOME:
+        Globals.CaretAbsLine = 0;
+        Globals.CaretCurLine = 0;
+        Globals.CaretAbsPos  = 0;
+        Globals.CaretCurPos  = 0;
+        break;
+
+    case DIR_TEXT_END:
+        for (a = Globals.TextList.first, i = 0; ; a = a->next, i++) {
+            if (a == Globals.TextList.last)
+                break;
+        }
+        Globals.CaretAbsLine = i;
+        Globals.CaretAbsPos = a->str.len;
+        EDIT_FixCaret();
+        break;
     }
 
 #ifdef DEBUG
     printf("%5s curline: %i, curpos: %i, absline: %i, abspos: %i\n",
            dir == DIR_DOWN  ? "DOWN" :
            dir == DIR_LEFT  ? "LEFT" :
-           dir == DIR_RIGHT ? "RIGHT": "UP",
+           dir == DIR_RIGHT ? "RIGHT":
+           dir == DIR_UP    ? "UP"   :
+           dir == DIR_HOME  ? "HOME" :
+           dir == DIR_END   ? "END"  :
+           dir == DIR_NEXT  ? "NEXT" :
+           dir == DIR_PRIOR ? "PRIOR":
+           dir == DIR_TEXT_HOME ? "T_HOME" : "T_END",
            Globals.CaretCurLine,
            Globals.CaretCurPos,
            Globals.CaretAbsLine,
