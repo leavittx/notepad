@@ -12,14 +12,18 @@
 #include "dialog.h"
 #include "notepad_res.h"
 
-NOTEPAD_GLOBALS Globals;
-static RECT main_rect;
+NOTEPAD_GLOBALS Globals; // Notepad globals
+static RECT main_rect;   // Main window rect
 
 /***********************************************************************
+ *          SetFileName
  *
- *           SetFileName
+ *  Sets global file name and title
  *
- *  Sets global file name.
+ *  ARGUMENTS:
+ *    - file name:
+ *         const char *FileName
+ *  RETURNS: none
  */
 void SetFileName(const char *FileName)
 {
@@ -29,8 +33,12 @@ void SetFileName(const char *FileName)
 }
 
 /***********************************************************************
- *
  *           NOTEPAD_SetParams
+ *
+ *  Sets some notepad params
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
  */
 static void NOTEPAD_SetParams(void)
 {
@@ -51,8 +59,17 @@ static void NOTEPAD_SetParams(void)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnCreate
  *
- *           NOTEPAD_OnCreate
+ *  WM_CREATE window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - structure with creation data (not used):
+ *         CREATESTRUCT *cs
+ *  RETURNS:
+ *      (bool) true to continue creation window, false to terminate
  */
 static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
 {
@@ -99,8 +116,16 @@ static bool NOTEPAD_OnCreate(HWND hWnd, CREATESTRUCT *cs)
 }
 
 /***********************************************************************
+ *          NOTEPAD_SetFocus
  *
- *           NOTEPAD_OnSetFocus
+ *  WM_SETFOCUS window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - (not used):
+ *         HWND lostFocusWnd
+ *  RETURNS: none
  */
 static void NOTEPAD_OnSetFocus(HWND hWnd, HWND lostFocusWnd)
 {
@@ -111,8 +136,16 @@ static void NOTEPAD_OnSetFocus(HWND hWnd, HWND lostFocusWnd)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnKillFocus
  *
- *           NOTEPAD_OnKillFocus
+ *  WM_KILLFOCUS window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - (not used):
+ *         HWND recvFocusWnd
+ *  RETURNS: none
  */
 static void NOTEPAD_OnKillFocus(HWND hWnd, HWND recvFocusWnd)
 {
@@ -121,8 +154,20 @@ static void NOTEPAD_OnKillFocus(HWND hWnd, HWND recvFocusWnd)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnSize
  *
- *           NOTEPAD_OnSize
+ *  WM_SIZE window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - (not used):
+ *         uint State
+ *    - new width:
+ *         int W
+ *    - new height:
+ *         int H
+ *  RETURNS: none
  */
 static void NOTEPAD_OnSize(HWND hWnd, uint State, int W, int H)
 {
@@ -163,8 +208,14 @@ static void NOTEPAD_OnSize(HWND hWnd, uint State, int W, int H)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnPaint
  *
- *           NOTEPAD_OnPaint
+ *  WM_PAINT window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *  RETURNS: none
  */
 static void NOTEPAD_OnPaint(HWND hWnd)
 {
@@ -259,6 +310,16 @@ static void NOTEPAD_OnPaint(HWND hWnd)
     EndPaint(hWnd, &ps);
 }
 
+/***********************************************************************
+ *          UpdateStuff
+ *
+ *  Update scroll info (if needed) and set caret position
+ *
+ *  ARGUMENTS:
+ *    - do we need to update scroll info
+ *         bool isFixScroll
+ *  RETURNS: none
+ */
 static void UpdateStuff(bool isFixScroll)
 {
     SCROLLINFO vert_scroll_info, horz_scroll_info;
@@ -360,8 +421,20 @@ static void UpdateStuff(bool isFixScroll)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnVScroll
  *
- *           NOTEPAD_OnVScroll
+ *  WM_VSCROLL window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - (not used):
+ *         HWND hWndCtl
+ *    - scroll code:
+ *         uint Code
+ *    - (not used):
+ *         int Pos
+ *  RETURNS: none
  */
 static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
 {
@@ -423,10 +496,22 @@ static void NOTEPAD_OnVScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnHScroll
  *
- *           NOTEPAD_OnHScroll
+ *  WM_HSCROLL window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - (not used):
+ *         HWND hWndCtl
+ *    - scroll code:
+ *         uint Code
+ *    - (not used):
+ *         int Pos
+ *  RETURNS: none
  */
-static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
+static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos)
 {
     SCROLLINFO scroll_info;
     int horz_pos;
@@ -478,8 +563,22 @@ static VOID NOTEPAD_OnHScroll(HWND hWnd, HWND hWndCtl, uint Code, int Pos )
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnKeyDown
  *
- *           NOTEPAD_OnKeyDown
+ *  WM_KEYDOWN window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - virtual key code:
+ *         uint VKey
+ *    - (not used):
+ *         bool Down
+ *    - (not used):
+ *         int Repeat
+ *    - (not used):
+ *         uint flags
+ *  RETURNS: none
  */
 static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint flags)
 {
@@ -541,10 +640,20 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnChar
  *
- *           NOTEPAD_OnChar
+ *  WM_CHAR window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - input character:
+ *         unsigned char Ch
+ *    - (not used):
+ *         int cRepeat
+ *  RETURNS: none
  */
-void NOTEPAD_OnChar(HWND hWnd, unsigned char Ch, int cRepeat)
+static void NOTEPAD_OnChar(HWND hWnd, unsigned char Ch, int cRepeat)
 {
       switch (Ch)
       {
@@ -567,12 +676,22 @@ void NOTEPAD_OnChar(HWND hWnd, unsigned char Ch, int cRepeat)
 }
 
 /***********************************************************************
- *
- *           NOTEPAD_OnMenuCommand
+ *          NOTEPAD_OnMenuCommand
  *
  *  All handling of main menu events
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - menu command id:
+ *         int Id
+ *    - (not used):
+ *         HWND hwndCtl
+ *    - (not used):
+ *         uint codeNotify
+ *  RETURNS: none
  */
-void NOTEPAD_OnMenuCommand(HWND hwnd, int Id, HWND hwndCtl, uint codeNotify)
+static void NOTEPAD_OnMenuCommand(HWND hwnd, int Id, HWND hwndCtl, uint codeNotify)
 {
     switch (Id) {
         case CMD_NEW:     DIALOG_FileNew();    break;
@@ -597,8 +716,16 @@ void NOTEPAD_OnMenuCommand(HWND hwnd, int Id, HWND hwndCtl, uint codeNotify)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnDropFiles
  *
- *           NOTEPAD_OnDropFiles
+ *  WM_DROPFILES window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - drop info:
+ *         HDROP hDrop
+ *  RETURNS: none
  */
 static void NOTEPAD_OnDropFiles(HWND hWnd, HDROP hDrop)
 {
@@ -611,8 +738,14 @@ static void NOTEPAD_OnDropFiles(HWND hWnd, HDROP hDrop)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnClose
  *
- *           NOTEPAD_OnClose
+ *  WM_CLOSE window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *  RETURNS: none
  */
 static void NOTEPAD_OnClose(HWND hWnd)
 {
@@ -621,8 +754,14 @@ static void NOTEPAD_OnClose(HWND hWnd)
 }
 
 /***********************************************************************
+ *          NOTEPAD_OnDestroy
  *
- *           NOTEPAD_OnDestroy
+ *  WM_DESTROY window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *  RETURNS: none
  */
 static void NOTEPAD_OnDestroy(HWND hWnd)
 {
@@ -653,11 +792,9 @@ static void NOTEPAD_InitData(void)
 }
 
 /***********************************************************************
- *
  *           NOTEPAD_WndProc
  */
-static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
-                               LPARAM lParam)
+static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
         HANDLE_MSG(hWnd, WM_CREATE, NOTEPAD_OnCreate);
@@ -683,6 +820,17 @@ static LRESULT WINAPI NOTEPAD_WndProc(HWND hWnd, UINT msg, WPARAM wParam,
             break;*/
 }
 
+/***********************************************************************
+ *          AlertFileDoesNotExist
+ *
+ *  Alert that file does not exist
+ *
+ *  ARGUMENTS:
+ *    - name of file:
+ *         const char *FileName
+ *  RETURNS:
+ *      (int) user choice
+ */
 static int AlertFileDoesNotExist(const char *FileName)
 {
    int Result;
@@ -695,11 +843,21 @@ static int AlertFileDoesNotExist(const char *FileName)
    LoadString(Globals.hInstance, STRING_ERROR, Resource, ARRAY_SIZE(Resource));
 
    Result = MessageBox(Globals.hMainWnd, Message, Resource,
-                         MB_ICONEXCLAMATION | MB_YESNOCANCEL);
+                       MB_ICONEXCLAMATION | MB_YESNOCANCEL);
 
    return Result;
 }
 
+/***********************************************************************
+ *          HandleCommandLine
+ *
+ *  Handle command line options
+ *
+ *  ARGUMENTS:
+ *    - command line options passed to the program (as string):
+ *         char *cmdline
+ *  RETURNS: none
+ */
 static void HandleCommandLine(char *cmdline)
 {
     if (*cmdline) {
@@ -727,7 +885,6 @@ static void HandleCommandLine(char *cmdline)
 }
 
 /***********************************************************************
- *
  *           WinMain
  */
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)

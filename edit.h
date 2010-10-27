@@ -8,46 +8,46 @@
 #include <stdbool.h>
 
 typedef struct {
-    char *data;
-    int len;
-} String;
+    char *data; // String data
+    int len;    // String lengh
+} String;       // String
 
 typedef struct tagTextItem {
-    String str;
-    int *drawnums;
-    int *offsets;
-    int noffsets;
-    struct tagTextItem *prev, *next;
-} TextItem;
+    String str;    // String and it's lengh
+    int *drawnums; // Numbers to draw for each offset
+    int *offsets;  // Offsets to wrap long lines
+    int noffsets;  // Number of offsets
+    struct tagTextItem *prev, *next; // Previous and next elements
+} TextItem; // This is a single string from file with some additionl info
 
 typedef struct {
-  TextItem *first, *last;
-  int nDrawLines;
-  int LongestStringLength;
-} Text;
+  TextItem *first, *last;  // First and last strings in text
+  int nDrawLines;          // Number of lines to draw
+  int LongestStringLength; // Length of the longest line in text, this is needed for horizontal scrolling
+} Text; // Text (which was in file)
 
 typedef enum {
-    DIR_UP,
-    DIR_DOWN,
-    DIR_RIGHT,
-    DIR_LEFT,
-    DIR_HOME,
-    DIR_END,
-    DIR_NEXT,
-    DIR_PRIOR,
-    DIR_TEXT_HOME,
-    DIR_TEXT_END
-} DIR;
+    DIR_UP,        // Move the cursor up
+    DIR_DOWN,      // Move the cursor down
+    DIR_RIGHT,     // Move the cursor right
+    DIR_LEFT,      // Move the cursor left
+    DIR_HOME,      // Go to the beginning of the current line
+    DIR_END,       // Go to the end of current line
+    DIR_NEXT,      // Go to the next page of document
+    DIR_PRIOR,     // Go to the previous page of document
+    DIR_TEXT_HOME, // Go to the beginning of document
+    DIR_TEXT_END   // Go to the end of document
+} DIR; // Cursor directions
 
-void EDIT_AddTextItem(FILE *f, int len);
-void EDIT_CountOffsets(void);
-void EDIT_ClearTextList(void);
+void EDIT_AddTextItem(FILE *f, int len); // Read a string from file
+void EDIT_CountOffsets(void);            // Count offsets, drawnums, etc
+void EDIT_ClearTextList(void);           // Remove text from memory
 
-void EDIT_MoveCaret(DIR dir);
-void EDIT_FixCaret(void);
+void EDIT_MoveCaret(DIR dir); // Move caret
+void EDIT_FixCaret(void);     // Count draw-related caret line number and position based on the absolute values
 
-void EDIT_DoBackspace(void);
-void EDIT_DoReturn(void);
-void EDIT_InsertCharacter(char c);
+void EDIT_DoBackspace(void);       // Backspace
+void EDIT_DoReturn(void);          // Enter
+void EDIT_InsertCharacter(char c); // Instert printable character
 
 #endif // EDIT_H

@@ -7,9 +7,18 @@
 #include "main.h"
 #include "dialog.h"
 
+/***********************************************************************
+ *          ShowLastError
+ *
+ *  Show last windows error
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void ShowLastError(void)
 {
     DWORD error = GetLastError();
+
     if (error != NO_ERROR)
     {
         char *lpMsgBuf;
@@ -47,6 +56,22 @@ void UpdateWindowCaption(void)
   SetWindowText(Globals.hMainWnd, Caption);
 }
 
+/***********************************************************************
+ *          DIALOG_StringMsgBox
+ *
+ *  Format and show a message in a message box
+ *
+ *  ARGUMENTS:
+ *    - parent window:
+ *         HWND hParent
+ *    - format id:
+ *         int formatId
+ *    - message string:
+ *         const char *String
+ *    - flags for message box
+ *         DWORD dwFlags
+ *  RETURNS: none
+ */
 int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dwFlags)
 {
    char Message[MAX_STRING_LEN];
@@ -68,18 +93,39 @@ int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dw
    return MessageBox(hParent, Message, Resource, dwFlags);
 }
 
+/***********************************************************************
+ *          AlertFileNotFound
+ *
+ *  Alert that file not found
+ *
+ *  ARGUMENTS:
+ *    - file name:
+ *         const char *FileName
+ *  RETURNS: none
+ */
 static void AlertFileNotFound(const char *FileName)
 {
    DIALOG_StringMsgBox(NULL, STRING_NOTFOUND, FileName, MB_ICONEXCLAMATION|MB_OK);
 }
 
+/***********************************************************************
+ *          AlertFileNotSaved
+ *
+ *  Alert that file not saved
+ *
+ *  ARGUMENTS:
+ *    - file name:
+ *         const char *FileName
+ *  RETURNS:
+ *      (int) user choice made in message box
+ */
 static int AlertFileNotSaved(const char *FileName)
 {
    char Untitled[MAX_STRING_LEN];
 
    LoadString(Globals.hInstance, STRING_UNTITLED, Untitled, ARRAY_SIZE(Untitled));
-   return DIALOG_StringMsgBox(NULL, STRING_NOTSAVED, FileName[0] ? FileName :  Untitled,
-     MB_ICONQUESTION|MB_YESNOCANCEL);
+   return DIALOG_StringMsgBox(NULL, STRING_NOTSAVED, FileName[0] ? FileName : Untitled,
+                              MB_ICONQUESTION | MB_YESNOCANCEL);
 }
 
 /**
@@ -98,7 +144,15 @@ bool FileExists(const char *Filename)
     return true;
 }
 
-void ResetScrollAndCaret(void)
+/***********************************************************************
+ *          ResetScrollAndCaret
+ *
+ *  Reset scroll and caret position
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
+static void ResetScrollAndCaret(void)
 {
     // Reset scroll position
     SetScrollPos(Globals.hMainWnd, SB_VERT, 0, true);
@@ -111,16 +165,15 @@ void ResetScrollAndCaret(void)
 }
 
 typedef enum {
-    SAVED_OK,
-    SAVE_FAILED
-} SAVE_STATUS;
+    SAVED_OK,   // File saved successfully
+    SAVE_FAILED // Something gone wrong
+} SAVE_STATUS;  // File save status
 
 /* FileName is the filename to save under.
  *
  * If the function succeeds, it returns SAVED_OK.
  * If the function fails, it returns SAVE_FAILED.
  */
-// TODO (done) -- save test.txt (rus) under different name and diff
 static SAVE_STATUS DoSaveFile(const char *FileName)
 {
     FILE *outFile;
@@ -174,6 +227,16 @@ bool DoCloseFile(void)
     return true;
 }
 
+/***********************************************************************
+ *          DoOpenFile
+ *
+ *  Open and load file
+ *
+ *  ARGUMENTS:
+ *    - file name:
+ *         const char *FileName
+ *  RETURNS: none
+ */
 void DoOpenFile(const char *FileName)
 {
     FILE *inFile;
@@ -259,6 +322,14 @@ void DoOpenFile(const char *FileName)
     SendMessage(Globals.hMainWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
 }
 
+/***********************************************************************
+ *          DIALOG_FileNew
+ *
+ *  New file dialog
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void DIALOG_FileNew(void)
 {
     static const char empty_str[] = { 0 };
@@ -278,6 +349,14 @@ void DIALOG_FileNew(void)
     }
 }
 
+/***********************************************************************
+ *          DIALOG_FileOpen
+ *
+ *  Open file dialog
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void DIALOG_FileOpen(void)
 {
     OPENFILENAME openfilename;
@@ -303,7 +382,15 @@ void DIALOG_FileOpen(void)
         DoOpenFile(openfilename.lpstrFile);
 }
 
-/* Return false to cancel close */
+/***********************************************************************
+ *          DIALOG_FileSave
+ *
+ *  Save file dialog
+ *
+ *  ARGUMENTS: none
+ *  RETURNS:
+ *      (bool) false to cancel close of opened file, true otherwise
+ */
 bool DIALOG_FileSave(void)
 {
     if (Globals.FileName[0] == '\0')
@@ -318,6 +405,15 @@ bool DIALOG_FileSave(void)
     }
 }
 
+/***********************************************************************
+ *          DIALOG_FileSaveAs
+ *
+ *  Save file as dialog
+ *
+ *  ARGUMENTS: none
+ *  RETURNS:
+ *      (bool) false to cancel close of opened file, true otherwise
+ */
 bool DIALOG_FileSaveAs(void)
 {
     OPENFILENAME saveas;
@@ -354,11 +450,27 @@ bool DIALOG_FileSaveAs(void)
     }
 }
 
+/***********************************************************************
+ *          DIALOG_FileExit
+ *
+ *  Exit file dialog
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void DIALOG_FileExit(void)
 {
     PostMessage(Globals.hMainWnd, WM_CLOSE, 0, 0l);
 }
 
+/***********************************************************************
+ *          DIALOG_FileExit
+ *
+ *  Toggle wrap mode dialog
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void DIALOG_EditWrap(void)
 {
     Globals.isWrapLongLines = !Globals.isWrapLongLines;

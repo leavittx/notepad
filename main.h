@@ -3,40 +3,40 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
-typedef unsigned int uint;
-
 #include "edit.h"
 #include "notepad_res.h"
 
-#define MAX_STRING_LEN 255
+typedef unsigned int uint; // Define short name for unsigned int type
 
-#define LF '\n'
-#define CR '\r'
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0])) // Array size macro
+
+#define MAX_STRING_LEN 255 // Maximum string lengh
+
+#define LF '\n' // LF character
+#define CR '\r' // CR character
 
 typedef enum {
-    EOL_LF,
-    EOL_CRLF
-} EOL_TYPE;
+    EOL_LF,  // Unix style line break
+    EOL_CRLF // Windows style line break
+} EOL_TYPE;  // Type of line break
 
 typedef struct {
-    HANDLE hInstance;
-    HWND   hMainWnd;
-    int    W, H;
-    bool   isWrapLongLines;
-    char   FileName[MAX_PATH];
-    char   FileTitle[MAX_PATH];
-    char   Filter[MAX_STRING_LEN];
-    EOL_TYPE EOL_type;
-    Text   TextList;
-    int    CharW, CharH;
-    int    CaretAbsLine, CaretAbsPos;
-    int    CaretCurLine, CaretCurPos;
-} NOTEPAD_GLOBALS;
+    HANDLE hInstance;                 // Program  instance
+    HWND   hMainWnd;                  // Program main window
+    int    W, H;                      // Current window width and height
+    bool   isWrapLongLines;           // Do we need to wrap long lines now
+    char   FileName[MAX_PATH];        // Path of current file
+    char   FileTitle[MAX_PATH];       // Title of current file
+    char   Filter[MAX_STRING_LEN];    // Open and save dialog file filter
+    EOL_TYPE EOL_type;                // Type of line break in current file
+    Text   TextList;                  // List that contains lines from file and some info
+    int    CharW, CharH;              // Character width and height
+    int    CaretAbsLine, CaretAbsPos; // Caret absolute number of line and position in line
+    int    CaretCurLine, CaretCurPos; // Caret draw-related number of line and position
+} NOTEPAD_GLOBALS; // Notepad globals
 
-extern NOTEPAD_GLOBALS Globals;
+extern NOTEPAD_GLOBALS Globals; // Extern notepad globals
 
-void SetFileName(const char *FileName);
+void SetFileName(const char *FileName); // Set file name (path) and title
 
 #endif // MAIN_H

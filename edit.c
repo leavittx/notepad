@@ -6,6 +6,18 @@
 #include "main.h"
 #include "edit.h"
 
+/***********************************************************************
+ *          EDIT_AddTextItem
+ *
+ *  Read a string from file
+ *
+ *  ARGUMENTS:
+ *    - file to read from:
+ *         FILE *f
+ *    - length of current string to read:
+ *         int len
+ *  RETURNS: none
+ */
 void EDIT_AddTextItem(FILE *f, int len)
 {
     TextItem **first = &Globals.TextList.first,
@@ -42,6 +54,14 @@ void EDIT_AddTextItem(FILE *f, int len)
     cur->str.len = len;
 }
 
+/***********************************************************************
+ *          EDIT_CountOffsets
+ *
+ *  Count offsets, drawnums, etc
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void EDIT_CountOffsets(void)
 {
     Globals.TextList.nDrawLines = 0;
@@ -141,6 +161,15 @@ void EDIT_CountOffsetsOne(TextItem *a)
     }
 }
 */
+
+/***********************************************************************
+ *          EDIT_ClearTextList
+ *
+ *  Remove text from memory
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void EDIT_ClearTextList(void)
 {
     if (Globals.TextList.first == NULL)
@@ -164,6 +193,16 @@ void EDIT_ClearTextList(void)
     Globals.TextList.first = NULL;
 }
 
+/***********************************************************************
+ *          EDIT_MoveCaret
+ *
+ *  Move caret
+ *
+ *  ARGUMENTS:
+ *    - direction to move:
+ *         DIR dir
+ *  RETURNS: none
+ */
 void EDIT_MoveCaret(DIR dir)
 {
     TextItem *a, *prev;
@@ -391,6 +430,14 @@ void EDIT_MoveCaret(DIR dir)
 #endif
 }
 
+/***********************************************************************
+ *          EDIT_FixCaret
+ *
+ *  Count draw-related caret line number and position based on the absolute values
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void EDIT_FixCaret(void)
 {
     TextItem *a;
@@ -422,6 +469,14 @@ void EDIT_FixCaret(void)
     Globals.CaretCurPos = Globals.CaretAbsPos - maxlen * noffset;
 }
 
+/***********************************************************************
+ *          EDIT_DoBackspace
+ *
+ *  Backspace
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void EDIT_DoBackspace(void)
 {
     TextItem *a;
@@ -511,6 +566,14 @@ void EDIT_DoBackspace(void)
     //EDIT_CountOffsets();
 }
 
+/***********************************************************************
+ *          EDIT_DoReturn
+ *
+ *  Enter
+ *
+ *  ARGUMENTS: none
+ *  RETURNS: none
+ */
 void EDIT_DoReturn(void)
 {
     TextItem *a;
@@ -584,6 +647,16 @@ void EDIT_DoReturn(void)
     //EDIT_CountOffsets();
 }
 
+/***********************************************************************
+ *          EDIT_InsertCharacter
+ *
+ *  Instert printable character
+ *
+ *  ARGUMENTS:
+ *      - character to insert:
+ *          char c
+ *  RETURNS: none
+ */
 void EDIT_InsertCharacter(char c)
 {
     TextItem *a;

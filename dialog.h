@@ -3,21 +3,24 @@
 #ifndef DIALOG_H
 #define DIALOG_H
 
-void DIALOG_FileNew(void);
-void DIALOG_FileOpen(void);
-bool DIALOG_FileSave(void);
-bool DIALOG_FileSaveAs(void);
-void DIALOG_FileExit(void);
+#include <windows.h>
 
-void DIALOG_EditWrap(void);
+/* Dialog functions */
+void DIALOG_FileNew(void);    // New file dialog
+void DIALOG_FileOpen(void);   // Open file dialog
+bool DIALOG_FileSave(void);   // Save file dialog
+bool DIALOG_FileSaveAs(void); // Save file as dialog
+void DIALOG_FileExit(void);   // File exit dialog
 
-int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dwFlags);
+void DIALOG_EditWrap(void);   // Toggle wrap mode dialog
 
-/* utility functions */
-void ShowLastError(void);
-void UpdateWindowCaption(void);
-bool FileExists(const char *Filename);
-bool DoCloseFile(void);
-void DoOpenFile(const char *FileName);
+int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dwFlags); // Format and show a message in a message box
+
+/* Utility functions */
+void ShowLastError(void);              // Show last windows error
+void UpdateWindowCaption(void);        // Update window caption
+bool FileExists(const char *Filename); // Check if file exists
+bool DoCloseFile(void);                // Close file
+void DoOpenFile(const char *FileName); // Open file
 
 #endif // DIALOG_H
