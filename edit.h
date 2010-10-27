@@ -44,4 +44,8 @@ void EDIT_ClearTextList(void);
 void EDIT_MoveCaret(DIR dir);
 void EDIT_FixCaret(void);
 
+void EDIT_DoBackspace(void);
+void EDIT_DoReturn(void);
+void EDIT_InsertCharacter(char c);
+
 #endif // EDIT_H

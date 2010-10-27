@@ -367,3 +367,204 @@ void EDIT_FixCaret(void)
     Globals.CaretCurLine = a->drawnums[noffset];
     Globals.CaretCurPos = Globals.CaretAbsPos - maxlen * noffset;
 }
+
+void EDIT_DoBackspace(void)
+{
+    TextItem *a;
+
+    if (Globals.TextList.first == NULL)
+        return;
+
+    for (a = Globals.TextList.first;
+         a->drawnums[0] < Globals.CaretCurLine; a = a->next) {
+            if (a == Globals.TextList.last)
+                break;
+    }
+    if (a == Globals.TextList.last) {
+        if (a->drawnums[a->noffsets - 1] < Globals.CaretCurLine) // Should not happen
+            return;
+    }
+    else {
+        if (a->drawnums[0] != Globals.CaretCurLine)
+            a = a->prev;
+    }
+
+    if (Globals.CaretAbsPos > 0) {
+        char *tmp;
+
+        if ((tmp = malloc(a->str.len)) == NULL) {
+            // TODO -- show some error message
+            ExitProcess(1);
+        }
+
+        memcpy(tmp,
+               a->str.data,
+               Globals.CaretAbsPos - 1);
+        memcpy(tmp + Globals.CaretAbsPos - 1,
+               a->str.data + Globals.CaretAbsPos,
+               a->str.len - Globals.CaretAbsPos + 1);
+
+        free(a->str.data);
+        a->str.data = tmp;
+        a->str.len--;
+
+        //printf("%s\n", tmp);
+    }
+    else {
+        if (Globals.CaretAbsLine > 0) {
+            char *tmp;
+
+            if ((tmp = malloc(a->prev->str.len + a->str.len + 1)) == NULL) {
+                // TODO -- show some error message
+                ExitProcess(1);
+            }
+
+            memcpy(tmp,
+                   a->prev->str.data,
+                   a->prev->str.len);
+            memcpy(tmp + a->prev->str.len,
+                   a->str.data,
+                   a->str.len + 1);
+
+            Globals.CaretAbsLine--;
+            Globals.CaretAbsPos = a->prev->str.len + 1;
+
+            a->prev->next = a->next;
+            if (a->next != NULL)
+                a->next->prev = a->prev;
+            else
+                Globals.TextList.last = a->prev;
+
+            free(a->prev->str.data);
+            a->prev->str.data = tmp;
+            a->prev->str.len += a->str.len;
+
+            free(a->str.data);
+            free(a->offsets);
+            free(a->drawnums);
+            free(a);
+
+            EDIT_FixCaret();
+
+            //printf("%s\n", tmp);
+        }
+    }
+
+    EDIT_CountOffsets();
+}
+
+void EDIT_DoReturn(void)
+{
+    TextItem *a;
+
+    if (Globals.TextList.first == NULL)
+        return;
+
+    for (a = Globals.TextList.first;
+         a->drawnums[0] < Globals.CaretCurLine; a = a->next) {
+            if (a == Globals.TextList.last)
+                break;
+    }
+    if (a == Globals.TextList.last) {
+        if (a->drawnums[a->noffsets - 1] < Globals.CaretCurLine) // Should not happen
+            return;
+    }
+    else {
+        if (a->drawnums[0] != Globals.CaretCurLine)
+            a = a->prev;
+    }
+
+    char *tmp1, *tmp2;
+    TextItem *b;
+
+    if ((tmp1 = malloc(Globals.CaretAbsPos + 1)) == NULL) {
+        // TODO -- show some error message
+        ExitProcess(1);
+    }
+    if ((tmp2 = malloc(a->str.len - Globals.CaretAbsPos + 1)) == NULL) {
+        // TODO -- show some error message
+        ExitProcess(1);
+    }
+
+    memcpy(tmp1,
+           a->str.data,
+           Globals.CaretAbsPos);
+    tmp1[Globals.CaretAbsPos] = '\0';
+
+    memcpy(tmp2,
+           a->str.data + Globals.CaretAbsPos,
+           a->str.len - Globals.CaretAbsPos + 1);
+
+    printf("a:%s\nb:%s\n", tmp1, tmp2);
+
+    if ((b = malloc(sizeof(TextItem))) == NULL) {
+        // TODO -- show some error message
+        ExitProcess(1);
+    }
+
+    b->str.data = tmp2;
+    b->str.len = a->str.len - Globals.CaretAbsPos;
+
+    free(a->str.data);
+    a->str.data = tmp1;
+    a->str.len = Globals.CaretAbsPos;
+
+    b->prev = a;
+    b->next = a->next;
+    a->next = b;
+
+    if (b->next == NULL)
+        Globals.TextList.last = b;
+
+    Globals.CaretAbsLine++;
+    Globals.CaretCurLine++;
+    Globals.CaretAbsPos = 0;
+    Globals.CaretCurPos = 0;
+
+    EDIT_CountOffsets();
+}
+
+void EDIT_InsertCharacter(char c)
+{
+    TextItem *a;
+
+    if (Globals.TextList.first == NULL)
+        return;
+
+    for (a = Globals.TextList.first;
+         a->drawnums[0] < Globals.CaretCurLine; a = a->next) {
+            if (a == Globals.TextList.last)
+                break;
+    }
+    if (a == Globals.TextList.last) {
+        if (a->drawnums[a->noffsets - 1] < Globals.CaretCurLine) // Should not happen
+            return;
+    }
+    else {
+        if (a->drawnums[0] != Globals.CaretCurLine)
+            a = a->prev;
+    }
+
+    char *tmp;
+
+    if ((tmp = malloc(a->str.len + 2)) == NULL) {
+        // TODO -- show some error message
+        ExitProcess(1);
+    }
+
+    memcpy(tmp,
+           a->str.data,
+           Globals.CaretAbsPos);
+    tmp[Globals.CaretAbsPos] = c;
+    memcpy(tmp + Globals.CaretAbsPos + 1,
+           a->str.data + Globals.CaretAbsPos,
+           a->str.len - Globals.CaretAbsPos + 1);
+
+    free(a->str.data);
+    a->str.data = tmp;
+    a->str.len++;
+
+    EDIT_CountOffsets();
+
+    //printf("%s\n", tmp);
+}

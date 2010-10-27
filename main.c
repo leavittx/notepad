@@ -5,7 +5,8 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <stdbool.h>
-#include <time.h>
+//#include <time.h>
+#include <ctype.h> // For isprint()
 
 #include "main.h"
 #include "dialog.h"
@@ -489,14 +490,22 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             break;
 
         case VK_ESCAPE:
-            SendMessage(hWnd, WM_CLOSE, 0, 0);
+            //SendMessage(hWnd, WM_CLOSE, 0, 0);
             break;
 
         case VK_DELETE:
-            //MoveCaret(&(WSt->Document), CD_RIGHT);
-            //Backspace(&(WSt->Document), (WSt->W / WSt->CharWidth) - 10);
-            //MoveCaret(&(WSt->Document), CD_LEFT);
-            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(WSt->W, WSt->H));
+            if (Globals.CaretCurLine == Globals.TextList.nDrawLines - 1 &&
+                Globals.CaretAbsPos == Globals.TextList.last->str.len)
+                    return;
+            EDIT_MoveCaret(DIR_RIGHT);
+            EDIT_DoBackspace();
+            EDIT_MoveCaret(DIR_LEFT);
+            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            break;
+
+        case VK_RETURN: // Enter hit
+            EDIT_DoReturn();
+            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
             break;
     }
 
@@ -509,7 +518,22 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
  */
 void NOTEPAD_OnChar(HWND hWnd, char Ch, int cRepeat)
 {
+      switch (Ch)
+      {
+          case '\b': // Backspace
+            EDIT_DoBackspace();
+            SendMessage(hWnd, WM_KEYDOWN, VK_LEFT, 0);
+            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            break;
 
+          default:
+            if (isprint(Ch)) {
+                EDIT_InsertCharacter(Ch);
+                SendMessage(hWnd, WM_KEYDOWN, VK_RIGHT, 0);
+                SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            }
+            break;
+      }
 }
 
 /***********************************************************************
@@ -683,8 +707,8 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
     wc.cbSize        = sizeof(wc);
     wc.lpfnWndProc   = NOTEPAD_WndProc;
     wc.hInstance     = Globals.hInstance;
-    wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
-    wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hIcon         = LoadIcon(NULL, IDI_WINLOGO);
+    wc.hIconSm       = LoadIcon(NULL, IDI_WINLOGO);
     wc.hCursor       = LoadCursor(0, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)BLACK_BRUSH;//(HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszMenuName  = MAKEINTRESOURCE(MAIN_MENU);
