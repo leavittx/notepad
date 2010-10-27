@@ -495,12 +495,14 @@ void EDIT_DoReturn(void)
            a->str.data + Globals.CaretAbsPos,
            a->str.len - Globals.CaretAbsPos + 1);
 
-    printf("a:%s\nb:%s\n", tmp1, tmp2);
+    //printf("a:%s\nb:%s\n", tmp1, tmp2);
 
     if ((b = malloc(sizeof(TextItem))) == NULL) {
         // TODO -- show some error message
         ExitProcess(1);
     }
+
+    b->drawnums = b->offsets = NULL;
 
     b->str.data = tmp2;
     b->str.len = a->str.len - Globals.CaretAbsPos;

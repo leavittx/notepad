@@ -143,6 +143,7 @@ static SAVE_STATUS DoSaveFile(const char *FileName)
         fputc(LF, outFile);
     }
 
+    fclose(outFile);
     return SAVED_OK;
 }
 
