@@ -500,12 +500,14 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             EDIT_MoveCaret(DIR_RIGHT);
             EDIT_DoBackspace();
             EDIT_MoveCaret(DIR_LEFT);
-            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            InvalidateRect(hWnd, NULL, false);
             break;
 
         case VK_RETURN: // Enter hit
             EDIT_DoReturn();
-            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            InvalidateRect(hWnd, NULL, false);
             break;
     }
 
@@ -523,14 +525,16 @@ void NOTEPAD_OnChar(HWND hWnd, char Ch, int cRepeat)
           case '\b': // Backspace
             EDIT_DoBackspace();
             SendMessage(hWnd, WM_KEYDOWN, VK_LEFT, 0);
-            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            InvalidateRect(hWnd, NULL, false);
             break;
 
           default:
             if (isprint(Ch)) {
                 EDIT_InsertCharacter(Ch);
                 SendMessage(hWnd, WM_KEYDOWN, VK_RIGHT, 0);
-                SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+                //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+                InvalidateRect(hWnd, NULL, false);
             }
             break;
       }

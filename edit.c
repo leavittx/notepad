@@ -51,8 +51,8 @@ void EDIT_CountOffsets(void)
 
     // Wrap mode disabled
     if (!Globals.isWrapLongLines) {
-        int i = 0;
-        for (TextItem *a = Globals.TextList.first; ; a = a->next, i++) {
+        int drawnum = 0;
+        for (TextItem *a = Globals.TextList.first; ; a = a->next) {
             //if (a->drawnums != NULL)
                 free(a->drawnums);
             //if (a->offsets != NULL)
@@ -61,7 +61,7 @@ void EDIT_CountOffsets(void)
             a->drawnums = malloc(sizeof(int));
             a->offsets = malloc(sizeof(int));
 
-            a->drawnums[0] = i;
+            a->drawnums[0] = drawnum++;
             a->offsets[0] = 0;
             a->noffsets = 1;
             Globals.TextList.nDrawLines++;
@@ -109,7 +109,38 @@ void EDIT_CountOffsets(void)
     }
 #endif
 }
+/*
+// This don't recount drawnums
+void EDIT_CountOffsetsOne(TextItem *a)
+{
+    if (a == NULL)
+        return;
 
+    // Wrap mode enabled
+    if (Globals.isWrapLongLines) {
+        int maxlen = Globals.W / Globals.CharW;
+        int noffsets = a->str.len / maxlen + 1;
+
+        if (noffsets != a->noffsets) {
+            int drawnum = a->drawnums[0];
+
+            free(a->drawnums);
+            free(a->offsets);
+
+            a->drawnums = malloc(noffsets * sizeof(int));
+            a->offsets = malloc(noffsets * sizeof(int));
+
+            for (int i = 0; i < noffsets; i++) {
+                a->drawnums[i] = drawnum++;
+                a->offsets[i] = i * maxlen;
+            }
+            Globals.TextList.nDrawLines -= a->noffsets;
+            Globals.TextList.nDrawLines += noffsets;
+            a->noffsets = noffsets;
+        }
+    }
+}
+*/
 void EDIT_ClearTextList(void)
 {
     if (Globals.TextList.first == NULL)
@@ -408,6 +439,8 @@ void EDIT_DoBackspace(void)
         a->str.data = tmp;
         a->str.len--;
 
+        //EDIT_CountOffsetsOne(a);
+
         //printf("%s\n", tmp);
     }
     else {
@@ -438,6 +471,8 @@ void EDIT_DoBackspace(void)
             free(a->prev->str.data);
             a->prev->str.data = tmp;
             a->prev->str.len += a->str.len;
+
+            //EDIT_CountOffsetsOne(a->prev);
 
             free(a->str.data);
             free(a->offsets);
@@ -566,7 +601,9 @@ void EDIT_InsertCharacter(char c)
     a->str.data = tmp;
     a->str.len++;
 
+    // TODO -- on 100 Mb file this is really slow
     EDIT_CountOffsets();
+    //EDIT_CountOffsetsOne(a);
 
     //printf("%s\n", tmp);
 }

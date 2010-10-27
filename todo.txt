@@ -7,10 +7,11 @@
 -                       MouseWheel,MouseClick
 + Caret linked to position in text (on resize stay in the same place)
 - Fix vertical scroll when caret navigation
-- Editing:
--                       Character inserting (lower and upper case, space);
--                       Enter;
--                       Delete,Backspace
++ Editing:
++                       Character inserting (lower and upper case, space);
++                       Enter;
++                       Delete,Backspace
+- Speed up editing of large files (counting all offsets every time is slow!)
 ? Word wrap
 ? Handle '// TODO'
 ? Remember upper line while resizing
