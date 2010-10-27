@@ -7,7 +7,7 @@
 +                       Ctrl+o,Ctrl+s,Ctrl+x,...;
 -                       MouseWheel,MouseClick
 + Caret linked to position in text (on resize stay in the same place)
-!- Fix vertical scroll when caret navigation
++ Fix vertical scroll when caret navigation
 + Editing:
 +                       Character inserting (lower and upper case, space);
 +                       Enter;
@@ -16,7 +16,7 @@
 ? Word wrap
 ? Handle '// TODO'
 ? Remember upper line while resizing
-!- Comments on global functions, variables and structures
++ Comments on global functions, variables and structures
 ? Handle tabs (\t characters)
 ? Bug with last line shit!
 ? Icon
