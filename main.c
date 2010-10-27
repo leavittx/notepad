@@ -500,14 +500,14 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             EDIT_MoveCaret(DIR_RIGHT);
             EDIT_DoBackspace();
             EDIT_MoveCaret(DIR_LEFT);
-            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
-            InvalidateRect(hWnd, NULL, false);
+            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            //InvalidateRect(hWnd, NULL, false);
             break;
 
         case VK_RETURN: // Enter hit
             EDIT_DoReturn();
-            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
-            InvalidateRect(hWnd, NULL, false);
+            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            //InvalidateRect(hWnd, NULL, false);
             break;
     }
     UpdateStuff(true);
@@ -517,23 +517,23 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
  *
  *           NOTEPAD_OnChar
  */
-void NOTEPAD_OnChar(HWND hWnd, char Ch, int cRepeat)
+void NOTEPAD_OnChar(HWND hWnd, unsigned char Ch, int cRepeat)
 {
       switch (Ch)
       {
           case '\b': // Backspace
             EDIT_DoBackspace();
             SendMessage(hWnd, WM_KEYDOWN, VK_LEFT, 0);
-            //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
-            InvalidateRect(hWnd, NULL, false);
+            SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+            //InvalidateRect(hWnd, NULL, false);
             break;
 
           default:
-            if (isprint(Ch)) {
+            if (isprint(Ch) || (Ch >= 192 && Ch <= 255)) {
                 EDIT_InsertCharacter(Ch);
                 SendMessage(hWnd, WM_KEYDOWN, VK_RIGHT, 0);
-                //SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
-                InvalidateRect(hWnd, NULL, false);
+                SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
+                //InvalidateRect(hWnd, NULL, false);
             }
             break;
       }

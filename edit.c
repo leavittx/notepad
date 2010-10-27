@@ -508,7 +508,7 @@ void EDIT_DoBackspace(void)
         }
     }
 
-    EDIT_CountOffsets();
+    //EDIT_CountOffsets();
 }
 
 void EDIT_DoReturn(void)
@@ -581,7 +581,7 @@ void EDIT_DoReturn(void)
     Globals.CaretAbsPos = 0;
     Globals.CaretCurPos = 0;
 
-    EDIT_CountOffsets();
+    //EDIT_CountOffsets();
 }
 
 void EDIT_InsertCharacter(char c)
@@ -625,7 +625,7 @@ void EDIT_InsertCharacter(char c)
     a->str.len++;
 
     // TODO -- on 100 Mb file this is really slow
-    EDIT_CountOffsets();
+    //EDIT_CountOffsets();
     //EDIT_CountOffsetsOne(a);
 
     //printf("%s\n", tmp);
