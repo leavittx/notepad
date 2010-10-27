@@ -7,6 +7,7 @@
 #include <winuser.h>
 
 #define MAIN_MENU               0x201
+#define ID_ACCEL                0x203
 
 /* Commands */
 #define CMD_NEW                 0x100

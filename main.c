@@ -696,6 +696,7 @@ static void HandleCommandLine(char *cmdline)
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
 {
     MSG msg;
+    HACCEL accel;
     WNDCLASSEX wc;
     HMONITOR monitor;
     MONITORINFO info;
@@ -753,9 +754,13 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE prev, char *cmdline, int show)
     DragAcceptFiles(Globals.hMainWnd, true);
     HandleCommandLine(cmdline);
 
+    accel = LoadAccelerators(hInstance, MAKEINTRESOURCE(ID_ACCEL));
+
     while (GetMessage(&msg, 0, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if (!TranslateAccelerator(Globals.hMainWnd, accel, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
     return msg.wParam;
 }
