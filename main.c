@@ -272,19 +272,10 @@ static void UpdateStuff(bool isFixScroll)
         horz_scroll_info.cbSize = sizeof(horz_scroll_info);
         horz_scroll_info.fMask  = SIF_ALL;
         GetScrollInfo(Globals.hMainWnd, SB_HORZ, &horz_scroll_info);
-        /* Vertical scroll and caret */
-        //if (Globals.CaretCurLine >= vert_scroll_info.nPos + vert_scroll_info.nPage - 1)
-        //    SendMessage(hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
-        //if (Globals.CaretCurLine > 0 && Globals.CaretCurLine <= vert_scroll_info.nPos)
-        //    SendMessage(hWnd, WM_VSCROLL, SB_LINEUP, 0);
-        /* Horizontal scroll and caret */
-        //if (Globals.CaretCurPos >= horz_scroll_info.nPos + vert_scroll_info.nPage)
-        //    SendMessage(hWnd, WM_HSCROLL, SB_LINEDOWN, 0);
-        //if (Globals.CaretCurPos > 0 && Globals.CaretCurPos <= horz_scroll_info.nPos)
-        //    SendMessage(hWnd, WM_HSCROLL, SB_LINEUP, 0);
 
         //SendMessage(hWnd, WM_VSCROLL, SB_THUMBTRACK, MAKELONG(0, MAKEWORD(0, 222)));
 
+        // Fix vertical scroll
         if (Globals.CaretCurLine == vert_scroll_info.nPos + vert_scroll_info.nPage) {
             SendMessage(Globals.hMainWnd, WM_VSCROLL, SB_LINEDOWN, 0);
         }
@@ -316,6 +307,42 @@ static void UpdateStuff(bool isFixScroll)
                          0, Globals.CharH * (vert_pos - vert_scroll_info.nPos),
                          NULL, NULL);
             UpdateWindow(Globals.hMainWnd);
+        }
+
+        // Fix horizontal scroll
+        if (!Globals.isWrapLongLines) {
+            if (Globals.CaretCurPos == horz_scroll_info.nPos + horz_scroll_info.nPage) {
+                SendMessage(Globals.hMainWnd, WM_HSCROLL, SB_LINERIGHT, 0);
+            }
+            else if (Globals.CaretCurPos > horz_scroll_info.nPos + horz_scroll_info.nPage) {
+                int horz_pos = horz_scroll_info.nPos;
+
+                horz_scroll_info.nPos = Globals.CaretCurPos - horz_scroll_info.nPage + 1;
+
+                horz_scroll_info.fMask = SIF_POS;
+                SetScrollInfo(Globals.hMainWnd, SB_HORZ, &horz_scroll_info, true);
+
+                ScrollWindow(Globals.hMainWnd,
+                             Globals.CharW * (horz_pos - horz_scroll_info.nPos), 0,
+                             NULL, NULL);
+                UpdateWindow(Globals.hMainWnd);
+            }
+            else if (Globals.CaretCurPos == horz_scroll_info.nPos - 1) {
+                SendMessage(Globals.hMainWnd, WM_HSCROLL, SB_LINELEFT, 0);
+            }
+            else if (Globals.CaretCurPos < horz_scroll_info.nPos) {
+                int horz_pos = horz_scroll_info.nPos;
+
+                horz_scroll_info.nPos = Globals.CaretCurPos;
+
+                horz_scroll_info.fMask = SIF_POS;
+                SetScrollInfo(Globals.hMainWnd, SB_HORZ, &horz_scroll_info, true);
+
+                ScrollWindow(Globals.hMainWnd,
+                             Globals.CharW * (horz_pos - horz_scroll_info.nPos), 0,
+                             NULL, NULL);
+                UpdateWindow(Globals.hMainWnd);
+            }
         }
     }
 
