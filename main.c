@@ -638,6 +638,9 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             //InvalidateRect(hWnd, NULL, false);
             Globals.isModified = true;
             break;
+
+        default:
+            return;
     }
     UpdateStuff(true);
 }
