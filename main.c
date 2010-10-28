@@ -867,8 +867,18 @@ static int AlertFileDoesNotExist(const char *FileName)
  */
 static void HandleCommandLine(char *cmdline)
 {
+    /* file name is passed in the command line */
     if (*cmdline) {
-        /* file name is passed in the command line */
+        /* Remove double-quotes from filename */
+        /* Double-quotes are not allowed in Windows filenames */
+        if (cmdline[0] == '"')
+        {
+            char *wc;
+            cmdline++;
+            wc = cmdline;
+            while (*wc && *wc != '"') wc++;
+            *wc = 0;
+        }
         if (FileExists(cmdline)) {
             DoOpenFile(cmdline);
             InvalidateRect(Globals.hMainWnd, NULL, false);
