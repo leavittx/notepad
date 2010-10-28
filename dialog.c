@@ -223,6 +223,7 @@ bool DoCloseFile(void)
     }
 
     EDIT_ClearTextList();
+    Globals.isModified = false;
     SetFileName(empty_str);
     UpdateWindowCaption();
     return true;
@@ -313,6 +314,7 @@ void DoOpenFile(const char *FileName)
     }
 #endif
 
+    Globals.isModified = false;
     // Update window caption
     SetFileName(FileName);
     UpdateWindowCaption();
@@ -339,6 +341,7 @@ void DIALOG_FileNew(void)
     if (DoCloseFile()) {
         // Remove current text list from memory (if exists)
         EDIT_ClearTextList();
+        Globals.isModified = false;
         // Reset window caption
         SetWindowText(Globals.hMainWnd, empty_str);
         UpdateWindowCaption();
