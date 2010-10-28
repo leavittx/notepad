@@ -14,7 +14,8 @@ void DIALOG_FileExit(void);   // File exit dialog
 
 void DIALOG_EditWrap(void);   // Toggle wrap mode dialog
 
-int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dwFlags); // Format and show a message in a message box
+// Format and show a message in a message box
+int DIALOG_StringMsgBox(HWND hParent, int formatId, const char *String, DWORD dwFlags);
 
 /* Utility functions */
 void ShowLastError(void);              // Show last windows error

@@ -1,4 +1,5 @@
-- Editing from scratch
+- Redraw blanking
++ Editing from scratch
 + Caret navigation with keyboard (with accelerators):
 +                       LINE UP,DOWN,LEFT,RIGHT;
 +                       PgUp,PgDown;

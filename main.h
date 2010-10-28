@@ -25,6 +25,7 @@ typedef struct {
     HWND   hMainWnd;                  // Program main window
     int    W, H;                      // Current window width and height
     bool   isWrapLongLines;           // Do we need to wrap long lines now
+    bool   isModified;                // Was the buffer modified or not
     char   FileName[MAX_PATH];        // Path of current file
     char   FileTitle[MAX_PATH];       // Title of current file
     char   Filter[MAX_STRING_LEN];    // Open and save dialog file filter

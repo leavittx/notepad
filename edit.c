@@ -517,6 +517,8 @@ void EDIT_DoBackspace(void)
         a->str.data = tmp;
         a->str.len--;
 
+        Globals.isModified = true;
+
         //EDIT_CountOffsetsOne(a);
 
         //printf("%s\n", tmp);
@@ -559,6 +561,8 @@ void EDIT_DoBackspace(void)
 
             EDIT_FixCaret();
 
+            Globals.isModified = true;
+
             //printf("%s\n", tmp);
         }
     }
@@ -578,8 +582,39 @@ void EDIT_DoReturn(void)
 {
     TextItem *a;
 
-    if (Globals.TextList.first == NULL)
+    // New file
+    if (Globals.TextList.first == NULL) {
+        TextItem *b;
+
+        if ((a = malloc(sizeof(TextItem))) == NULL) {
+            // TODO -- show some error message
+            ExitProcess(1);
+        }
+        if ((b = malloc(sizeof(TextItem))) == NULL) {
+            // TODO -- show some error message
+            ExitProcess(1);
+        }
+        if ((a->str.data = malloc(sizeof(char) * 1)) == NULL) {
+            // TODO -- show some error message
+            ExitProcess(1);
+        }
+        if ((b->str.data = malloc(sizeof(char) * 1)) == NULL) {
+            // TODO -- show some error message
+            ExitProcess(1);
+        }
+        a->str.data[0] = b->str.data[0] = '\0';
+        a->str.len = b->str.len = 0;
+
+        a->next = b;
+        b->prev = a;
+        a->prev = b->next = NULL;
+        Globals.TextList.first = a;
+        Globals.TextList.last = b;
+        EDIT_CountOffsets();
+        Globals.CaretAbsLine++;
+        Globals.CaretCurLine++;
         return;
+    }
 
     for (a = Globals.TextList.first;
          a->drawnums[0] < Globals.CaretCurLine; a = a->next) {
@@ -661,8 +696,25 @@ void EDIT_InsertCharacter(char c)
 {
     TextItem *a;
 
-    if (Globals.TextList.first == NULL)
+    // New file
+    if (Globals.TextList.first == NULL) {
+        if ((a = malloc(sizeof(TextItem))) == NULL) {
+            // TODO -- show some error message
+            ExitProcess(1);
+        }
+        if ((a->str.data = malloc(sizeof(char) * 2)) == NULL) {
+            // TODO -- show some error message
+            ExitProcess(1);
+        }
+        a->str.data[0] = c;
+        a->str.data[1] = '\0';
+        a->str.len = 1;
+
+        a->prev = a->next = NULL;
+        Globals.TextList.first = Globals.TextList.last = a;
+        EDIT_CountOffsets();
         return;
+    }
 
     for (a = Globals.TextList.first;
          a->drawnums[0] < Globals.CaretCurLine; a = a->next) {

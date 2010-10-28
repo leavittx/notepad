@@ -197,6 +197,7 @@ static SAVE_STATUS DoSaveFile(const char *FileName)
     }
 
     fclose(outFile);
+    Globals.isModified = false;
     return SAVED_OK;
 }
 
@@ -210,7 +211,7 @@ bool DoCloseFile(void)
     int Result;
     static const char empty_str[] = { 0 };
 
-    if (0/*ismodified*/) {
+    if (Globals.isModified) {
         /* prompt user to save changes */
         Result = AlertFileNotSaved(Globals.FileName);
         switch (Result) {

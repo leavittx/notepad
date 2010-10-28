@@ -54,6 +54,7 @@ static void NOTEPAD_SetParams(void)
     Globals.W = dx;
     Globals.H = dy;
 
+    Globals.isModified = false;
     Globals.isWrapLongLines = true;
     Globals.EOL_type = EOL_LF;
 }
@@ -151,163 +152,6 @@ static void NOTEPAD_OnKillFocus(HWND hWnd, HWND recvFocusWnd)
 {
     HideCaret(hWnd);
     DestroyCaret();
-}
-
-/***********************************************************************
- *          NOTEPAD_OnSize
- *
- *  WM_SIZE window message handle function
- *
- *  ARGUMENTS:
- *    - handle of window:
- *         HWND hWnd
- *    - (not used):
- *         uint State
- *    - new width:
- *         int W
- *    - new height:
- *         int H
- *  RETURNS: none
- */
-static void NOTEPAD_OnSize(HWND hWnd, uint State, int W, int H)
-{
-    SCROLLINFO scroll_info;
-
-    Globals.W = W;
-    Globals.H = H;
-
-    if (W == 0 || H == 0)
-        return;
-
-    EDIT_CountOffsets();
-
-    // Vertical scroll
-    scroll_info.cbSize = sizeof(scroll_info);
-    scroll_info.fMask = SIF_PAGE | SIF_RANGE;
-    scroll_info.nMin = 0;
-    scroll_info.nMax = Globals.TextList.nDrawLines - 1;
-    scroll_info.nPage = H / Globals.CharH;
-    SetScrollInfo(hWnd, SB_VERT, &scroll_info, true);
-
-    // Horizontal scroll
-    scroll_info.cbSize = sizeof(scroll_info);
-    scroll_info.fMask = SIF_PAGE | SIF_RANGE;
-    scroll_info.nMin = 0;
-    if (Globals.isWrapLongLines)
-        scroll_info.nMax = W / Globals.CharW;
-    else
-        scroll_info.nMax = Globals.TextList.LongestStringLength;
-    scroll_info.nPage = W / Globals.CharW + 1;
-    SetScrollInfo(hWnd, SB_HORZ, &scroll_info, true);
-
-    // Fix caret position
-    EDIT_FixCaret();
-    SendMessage(Globals.hMainWnd, WM_KEYDOWN, 0, 0);
-
-    InvalidateRect(hWnd, NULL, false);
-}
-
-/***********************************************************************
- *          NOTEPAD_OnPaint
- *
- *  WM_PAINT window message handle function
- *
- *  ARGUMENTS:
- *    - handle of window:
- *         HWND hWnd
- *  RETURNS: none
- */
-static void NOTEPAD_OnPaint(HWND hWnd)
-{
-    HDC hDC;
-    PAINTSTRUCT ps;
-    RECT rc;
-    SCROLLINFO scroll_info;
-    int vert_pos, horiz_pos, paint_beg, paint_end;
-    int noffset = 0,
-        maxlen = Globals.W / Globals.CharW,
-        drawlen, drawoffset, drawremain;
-    int x = 0, y = 0;
-
-    GetClientRect(hWnd, &rc);
-    hDC = BeginPaint(hWnd, &ps);
-    FillRect(hDC, &rc, GetStockObject(BLACK_BRUSH));
-
-    // TODO -- clear window??
-    if (Globals.FileName[0] == '\0') {
-        EndPaint(hWnd, &ps);
-        return;
-    }
-
-    scroll_info.cbSize = sizeof(scroll_info);
-    scroll_info.fMask  = SIF_POS;
-    GetScrollInfo(hWnd, SB_VERT, &scroll_info);
-    vert_pos = scroll_info.nPos;
-    GetScrollInfo(hWnd, SB_HORZ, &scroll_info);
-    horiz_pos = scroll_info.nPos;
-
-    paint_beg = max(0, vert_pos + ps.rcPaint.top / Globals.CharH);
-    paint_end = min(Globals.TextList.nDrawLines - 1,
-                    vert_pos + ps.rcPaint.bottom / Globals.CharH);
-
-#ifdef DEBUG
-    printf("paint: %i %i\n", paint_beg, paint_end);
-#endif
-
-    TextItem *a;
-    for (a = Globals.TextList.first;
-         a->drawnums[0] < paint_beg && a != Globals.TextList.last;
-         a = a->next);
-
-    if (a == Globals.TextList.last) {
-        if (a->drawnums[0] + a->noffsets - 1 >= paint_beg) // -1: Not count first offset
-            noffset = paint_beg - a->drawnums[0];
-        else {
-            EndPaint(hWnd, &ps);
-            return;
-        }
-    }
-    else {
-        if (a->drawnums[0] != paint_beg) {
-            a = a->prev;
-            noffset = paint_beg - a->drawnums[0];
-        }
-    }
-
-    SelectObject(hDC, GetStockObject(SYSTEM_FIXED_FONT));
-    SetTextColor(hDC, RGB(0, 255, 0));
-    //SetTextColor(hDC, RGB(128, 128, 128));
-    //SetTextColor(hDC, RGB(0xff, 0x84, 0x0)); // Orange
-    SetBkColor(hDC, RGB(0, 0, 0));
-
-    for (int i = paint_beg; i <= paint_end; i++) {
-        x = Globals.CharW * (0 - horiz_pos);
-        y = Globals.CharH * (i - vert_pos);
-
-        drawoffset = noffset * maxlen;
-        if (Globals.isWrapLongLines) {
-            drawremain = a->str.len - drawoffset;
-            drawlen = drawremain >= maxlen ? maxlen : drawremain;
-            /*
-            drawlen = (a->str.len - noffset * maxlen) >= maxlen ?
-                maxlen : (a->str.len - noffset * maxlen) % maxlen;
-            */
-        }
-        else
-            drawlen = a->str.len;
-
-        TextOut(hDC, x, y, a->str.data + drawoffset, drawlen);
-
-        noffset++;
-        if (noffset >= a->noffsets) {
-            if (a == Globals.TextList.last)
-                break;
-            noffset = 0;
-            a = a->next;
-        }
-    }
-
-    EndPaint(hWnd, &ps);
 }
 
 /***********************************************************************
@@ -418,6 +262,164 @@ static void UpdateStuff(bool isFixScroll)
 
     SetCaretPos((Globals.CaretCurPos - horz_scroll_info.nPos) * Globals.CharW,
                 (Globals.CaretCurLine - vert_scroll_info.nPos) * Globals.CharH);
+}
+
+/***********************************************************************
+ *          NOTEPAD_OnSize
+ *
+ *  WM_SIZE window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *    - (not used):
+ *         uint State
+ *    - new width:
+ *         int W
+ *    - new height:
+ *         int H
+ *  RETURNS: none
+ */
+static void NOTEPAD_OnSize(HWND hWnd, uint State, int W, int H)
+{
+    SCROLLINFO scroll_info;
+
+    Globals.W = W;
+    Globals.H = H;
+
+    if (W == 0 || H == 0)
+        return;
+
+    EDIT_CountOffsets();
+
+    // Vertical scroll
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask = SIF_PAGE | SIF_RANGE;
+    scroll_info.nMin = 0;
+    scroll_info.nMax = Globals.TextList.nDrawLines - 1;
+    scroll_info.nPage = H / Globals.CharH;
+    SetScrollInfo(hWnd, SB_VERT, &scroll_info, true);
+
+    // Horizontal scroll
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask = SIF_PAGE | SIF_RANGE;
+    scroll_info.nMin = 0;
+    if (Globals.isWrapLongLines)
+        scroll_info.nMax = W / Globals.CharW;
+    else
+        scroll_info.nMax = Globals.TextList.LongestStringLength;
+    scroll_info.nPage = W / Globals.CharW + 1;
+    SetScrollInfo(hWnd, SB_HORZ, &scroll_info, true);
+
+    // Fix caret position
+    EDIT_FixCaret();
+    UpdateStuff(false);
+    //SendMessage(Globals.hMainWnd, WM_KEYDOWN, 0, 0);
+
+    InvalidateRect(hWnd, NULL, false);
+}
+
+/***********************************************************************
+ *          NOTEPAD_OnPaint
+ *
+ *  WM_PAINT window message handle function
+ *
+ *  ARGUMENTS:
+ *    - handle of window:
+ *         HWND hWnd
+ *  RETURNS: none
+ */
+static void NOTEPAD_OnPaint(HWND hWnd)
+{
+    HDC hDC;
+    PAINTSTRUCT ps;
+    RECT rc;
+    SCROLLINFO scroll_info;
+    int vert_pos, horiz_pos, paint_beg, paint_end;
+    int noffset = 0,
+        maxlen = Globals.W / Globals.CharW,
+        drawlen, drawoffset, drawremain;
+    int x = 0, y = 0;
+
+    GetClientRect(hWnd, &rc);
+    hDC = BeginPaint(hWnd, &ps);
+    FillRect(hDC, &rc, GetStockObject(BLACK_BRUSH));
+
+    // TODO -- clear window??
+    if (Globals.FileName[0] == '\0' && Globals.TextList.first == NULL) {
+        EndPaint(hWnd, &ps);
+        return;
+    }
+
+    scroll_info.cbSize = sizeof(scroll_info);
+    scroll_info.fMask  = SIF_POS;
+    GetScrollInfo(hWnd, SB_VERT, &scroll_info);
+    vert_pos = scroll_info.nPos;
+    GetScrollInfo(hWnd, SB_HORZ, &scroll_info);
+    horiz_pos = scroll_info.nPos;
+
+    paint_beg = max(0, vert_pos + ps.rcPaint.top / Globals.CharH);
+    paint_end = min(Globals.TextList.nDrawLines - 1,
+                    vert_pos + ps.rcPaint.bottom / Globals.CharH);
+
+#ifdef DEBUG
+    printf("paint: %i %i\n", paint_beg, paint_end);
+#endif
+
+    TextItem *a;
+    for (a = Globals.TextList.first;
+         a->drawnums[0] < paint_beg && a != Globals.TextList.last;
+         a = a->next);
+
+    if (a == Globals.TextList.last) {
+        if (a->drawnums[0] + a->noffsets - 1 >= paint_beg) // -1: Not count first offset
+            noffset = paint_beg - a->drawnums[0];
+        else {
+            EndPaint(hWnd, &ps);
+            return;
+        }
+    }
+    else {
+        if (a->drawnums[0] != paint_beg) {
+            a = a->prev;
+            noffset = paint_beg - a->drawnums[0];
+        }
+    }
+
+    SelectObject(hDC, GetStockObject(SYSTEM_FIXED_FONT));
+    SetTextColor(hDC, RGB(0, 255, 0));
+    //SetTextColor(hDC, RGB(128, 128, 128));
+    //SetTextColor(hDC, RGB(0xff, 0x84, 0x0)); // Orange
+    SetBkColor(hDC, RGB(0, 0, 0));
+
+    for (int i = paint_beg; i <= paint_end; i++) {
+        x = Globals.CharW * (0 - horiz_pos);
+        y = Globals.CharH * (i - vert_pos);
+
+        drawoffset = noffset * maxlen;
+        if (Globals.isWrapLongLines) {
+            drawremain = a->str.len - drawoffset;
+            drawlen = drawremain >= maxlen ? maxlen : drawremain;
+            /*
+            drawlen = (a->str.len - noffset * maxlen) >= maxlen ?
+                maxlen : (a->str.len - noffset * maxlen) % maxlen;
+            */
+        }
+        else
+            drawlen = a->str.len;
+
+        TextOut(hDC, x, y, a->str.data + drawoffset, drawlen);
+
+        noffset++;
+        if (noffset >= a->noffsets) {
+            if (a == Globals.TextList.last)
+                break;
+            noffset = 0;
+            a = a->next;
+        }
+    }
+
+    EndPaint(hWnd, &ps);
 }
 
 /***********************************************************************
@@ -634,6 +636,7 @@ static void NOTEPAD_OnKeyDown(HWND hWnd, uint VKey, bool Down, int Repeat, uint 
             EDIT_DoReturn();
             SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
             //InvalidateRect(hWnd, NULL, false);
+            Globals.isModified = true;
             break;
     }
     UpdateStuff(true);
@@ -670,6 +673,7 @@ static void NOTEPAD_OnChar(HWND hWnd, unsigned char Ch, int cRepeat)
                 SendMessage(hWnd, WM_KEYDOWN, VK_RIGHT, 0);
                 SendMessage(hWnd, WM_SIZE, 0, MAKELONG(Globals.W, Globals.H));
                 //InvalidateRect(hWnd, NULL, false);
+                Globals.isModified = true;
             }
             break;
       }

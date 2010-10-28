@@ -33,17 +33,15 @@ ID_ACCEL ACCELERATORS
 
 STRINGTABLE
 {
-    STRING_NOTEPAD,                             "Notepad"
-    STRING_ERROR,                               "ERROR"
+    STRING_NOTEPAD,          "Notepad"
+    STRING_ERROR,            "ERROR"
 
-    STRING_UNTITLED,                            "Untitled"
+    STRING_UNTITLED,         "Untitled"
 
-    STRING_ALL_FILES,                           "All files (*.*)"
-    STRING_TEXT_FILES_TXT,                      "Text files (*.txt)"
+    STRING_ALL_FILES,        "All files (*.*)"
+    STRING_TEXT_FILES_TXT,   "Text files (*.txt)"
 
-    STRING_DOESNOTEXIST,                        "File '%s' does not exist.\n\n\
-                                                 Do you want to create a new file?"
-    STRING_NOTSAVED,                            "File '%s' has been modified.\n\n\
-                                                 Would you like to save the changes?"
-    STRING_NOTFOUND,                            "'%s' could not be found."
+    STRING_DOESNOTEXIST,     "File '%s' does not exist.\n\nDo you want to create a new file?"
+    STRING_NOTSAVED,         "File '%s' has been modified.\n\nWould you like to save the changes?"
+    STRING_NOTFOUND,         "'%s' could not be found."
 }
