@@ -14,7 +14,7 @@ typedef struct {
 
 typedef struct tagTextItem {
     String str;    // String and it's lengh
-    int *drawnums; // Numbers to draw for each offset
+    int *drawnums; // Ordernal number of the wrapped line into the entire set of wrapped lines
     int *offsets;  // Offsets to wrap long lines
     int noffsets;  // Number of offsets
     struct tagTextItem *prev, *next; // Previous and next elements
